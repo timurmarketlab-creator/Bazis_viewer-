@@ -4274,9 +4274,9 @@ function __shViews() {
   var r = __shNorm(__shCross([0, 1, 0], b));
   var u = __shCross(b, r);
   return {
-    front: { r: [1, 0, 0], u: [0, 1, 0], v: [0, 0, -1] },
-    left: { r: [0, 0, 1], u: [0, 1, 0], v: [1, 0, 0] },
-    top: { r: [1, 0, 0], u: [0, 0, -1], v: [0, -1, 0] },
+    front: { r: [1, 0, 0], u: [0, 1, 0], v: [0, 0, -1], tn: [0, 0, 1] },
+    left: { r: [0, 0, 1], u: [0, 1, 0], v: [1, 0, 0], tn: [1, 0, 0] },
+    top: { r: [1, 0, 0], u: [0, 0, -1], v: [0, -1, 0], tn: [0, 1, 0] },
     axo: { r: r, u: u, v: [-b[0], -b[1], -b[2]], axo: true }
   };
 }
@@ -4289,6 +4289,47 @@ function __shProjBox(mn, mx, vw) {
     if (b < w0) w0 = b; if (b > w1) w1 = b;
   }
   return [u0, w0, u1, w1];
+}
+function __shHull(pts) {
+  var p = pts.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+  function cr(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+  var lo = [], up = [], i;
+  for (i = 0; i < p.length; i++) {
+    while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p[i]) <= 1e-9) lo.pop();
+    lo.push(p[i]);
+  }
+  for (i = p.length - 1; i >= 0; i--) {
+    while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p[i]) <= 1e-9) up.pop();
+    up.push(p[i]);
+  }
+  lo.pop(); up.pop();
+  return lo.concat(up);
+}
+function __shProjHull(mn, mx, vw) {
+  var pts = [], i;
+  for (i = 0; i < 8; i++) {
+    var p = [i & 1 ? mx[0] : mn[0], i & 2 ? mx[1] : mn[1], i & 4 ? mx[2] : mn[2]];
+    pts.push([__shDot(p, vw.r), __shDot(p, vw.u)]);
+  }
+  return __shHull(pts);
+}
+/* пересекаются ли два выпуклых силуэта (глубже tol, а не просто касаются) */
+function __shHullsOverlap(A, B, tol) {
+  var polys = [A, B], k, i, j;
+  for (k = 0; k < 2; k++) {
+    var P = polys[k];
+    for (i = 0; i < P.length; i++) {
+      var a = P[i], b = P[(i + 1) % P.length];
+      var nx = b[1] - a[1], ny = a[0] - b[0], nl = Math.hypot(nx, ny);
+      if (nl < 1e-12) continue;
+      nx /= nl; ny /= nl;
+      var a0 = 1e18, a1 = -1e18, b0 = 1e18, b1 = -1e18, d;
+      for (j = 0; j < A.length; j++) { d = A[j][0] * nx + A[j][1] * ny; if (d < a0) a0 = d; if (d > a1) a1 = d; }
+      for (j = 0; j < B.length; j++) { d = B[j][0] * nx + B[j][1] * ny; if (d < b0) b0 = d; if (d > b1) b1 = d; }
+      if (a1 <= b0 + tol || b1 <= a0 + tol) return false;
+    }
+  }
+  return true;
 }
 function __shMapper(vw, box, ox, oy, s) {
   return function (p) {
@@ -4316,6 +4357,7 @@ function __shOrder(rec, v) {
       var A = rec[i], B = rec[j];
       if (A.b2[2] <= B.b2[0] + 0.05 || B.b2[2] <= A.b2[0] + 0.05 ||
           A.b2[3] <= B.b2[1] + 0.05 || B.b2[3] <= A.b2[1] + 0.05) continue;
+      if (!__shHullsOverlap(A.hull, B.hull, 0.3)) continue;
       var r = __shCmp(A, B, v);
       if (r > 0) { adj[j].push(i); ind[i]++; }
       else if (r < 0) { adj[i].push(j); ind[j]++; }
@@ -4355,7 +4397,7 @@ function __shPart(m, vw, map, axo) {
     if (dn >= -1e-6) continue;
     var a = P(T[t * 3]), b = P(T[t * 3 + 1]), c = P(T[t * 3 + 2]);
     col = axo ? __shShade(N[t * 3], N[t * 3 + 1], N[t * 3 + 2], m.facade)
-              : (m.facade ? '#F7F1E6' : '#FFFFFF');
+              : __shShade(vw.tn[0], vw.tn[1], vw.tn[2], m.facade);
     groups[col] = (groups[col] || '') + 'M' + __shN(a[0]) + ' ' + __shN(a[1]) +
       'L' + __shN(b[0]) + ' ' + __shN(b[1]) + 'L' + __shN(c[0]) + ' ' + __shN(c[1]) + 'Z';
   }
@@ -4388,7 +4430,7 @@ function __shPart(m, vw, map, axo) {
 function __shParts(items, vw, map, axo) {
   var rec = items.map(function (m) {
     var c = [(m.min[0] + m.max[0]) / 2, (m.min[1] + m.max[1]) / 2, (m.min[2] + m.max[2]) / 2];
-    return { m: m, min: m.min, max: m.max, b2: __shProjBox(m.min, m.max, vw), cd: __shDot(c, vw.v) };
+    return { m: m, min: m.min, max: m.max, b2: __shProjBox(m.min, m.max, vw), hull: __shProjHull(m.min, m.max, vw), cd: __shDot(c, vw.v) };
   });
   var ord = __shOrder(rec, vw.v), s = '', i;
   for (i = 0; i < ord.length; i++) s += __shPart(rec[ord[i]].m, vw, map, axo);
@@ -4479,21 +4521,24 @@ function __shSegs(iv, lo, hi) {
 }
 function __shExt(m) { return [m.max[0] - m.min[0], m.max[1] - m.min[1], m.max[2] - m.min[2]]; }
 
-function __shStruct(P, noFac, mn, mx) {
+function __shStruct(P, noFac, mn, mx, cmn, cmx) {
   var W = mx[0] - mn[0], H = mx[1] - mn[1], D = mx[2] - mn[2];
+  var cW = cmx[0] - cmn[0], cH = cmx[1] - cmn[1], cD = cmx[2] - cmn[2];
   var xs = [], ys = [], zs = [], fx = [], i, j;
   noFac.forEach(function (m) {
     var e = __shExt(m);
-    if (e[0] <= 40 && e[1] >= 0.45 * H && e[2] >= 0.3 * D) xs.push([m.min[0], m.max[0]]);
-    if (e[1] <= 40 && e[0] >= 0.85 * W && e[2] >= 0.3 * D) ys.push([m.min[1], m.max[1]]);
+    if (e[0] <= 40 && e[1] >= 0.45 * cH && e[2] >= 0.3 * cD) xs.push([m.min[0], m.max[0]]);
+    if (e[1] <= 40 && e[0] >= 0.85 * cW && e[2] >= 0.3 * cD) ys.push([m.min[1], m.max[1]]);
   });
   P.forEach(function (m) {
     var e = __shExt(m);
     if (e[2] <= 40 && e[0] >= 0.45 * W && e[1] >= 0.45 * H) zs.push([m.min[2], m.max[2]]);
     if (m.facade) fx.push([m.min[0], m.max[0]]);
   });
-  var chX = __shSegs(xs, mn[0], mx[0]);
+  var chX = __shSegs(xs, mn[0], mx[0]);       // для вида сверху (с фасадами)
+  var chXc = __shSegs(xs, cmn[0], cmx[0]);    // для вида без фасадов — по корпусу
   var chY = __shSegs(ys, mn[1], mx[1]);
+  var chYc = __shSegs(ys, cmn[1], cmx[1]);
   var chZ = __shSegs(zs, mn[2], mx[2]);
   var fLo = 1e18, fHi = -1e18;
   fx.forEach(function (p) { if (p[0] < fLo) fLo = p[0]; if (p[1] > fHi) fHi = p[1]; });
@@ -4501,18 +4546,18 @@ function __shStruct(P, noFac, mn, mx) {
 
   // проёмы между перегородками; внутри — все детали секции (полки, ящики), кроме высоких
   var cols = [];
-  for (i = 0; i < chX.length; i++) {
-    if (chX[i].t !== 'g' || chX[i].b - chX[i].a < 30) continue;
-    var ca = chX[i].a, cb = chX[i].b, iv = [];
+  for (i = 0; i < chXc.length; i++) {
+    if (chXc[i].t !== 'g' || chXc[i].b - chXc[i].a < 30) continue;
+    var ca = chXc[i].a, cb = chXc[i].b, iv = [];
     noFac.forEach(function (m) {
       var e = __shExt(m);
-      if (e[1] >= 0.45 * H || e[2] <= 40) return;      // высокие детали; задние стенки, планки, царги
+      if (e[1] >= 0.45 * cH || e[2] <= 40) return;      // высокие детали; задние стенки, планки, царги
       var ov = Math.min(m.max[0], cb) - Math.max(m.min[0], ca);
       if (ov < 0.6 * Math.min(e[0], cb - ca)) return;  // деталь не в этой секции
       iv.push([m.min[1], m.max[1]]);
     });
     if (iv.length < 2) continue;
-    var sg = __shSegs(iv, mn[1], mx[1]), dm = [];
+    var sg = __shSegs(iv, cmn[1], cmx[1]), dm = [];
     for (j = 1; j < sg.length - 1; j++) {
       var ln = sg[j].b - sg[j].a;
       // просветы и заметные элементы (ящик); толщину полок смотрим в левой цепочке
@@ -4521,13 +4566,13 @@ function __shStruct(P, noFac, mn, mx) {
     if (dm.length) cols.push({ a: ca, b: cb, dims: dm, segs: sg, outer: false });
   }
   // по высоте слева: цепочка крайнего проёма (с толщиной полок); если проёмов нет — по сквозным полкам
-  var chYfront = chY, k;
+  var chYfront = chYc, k;
   for (k = 0; k < cols.length; k++) {
     if (cols[k].dims.length >= 1) { cols[k].outer = true; chYfront = cols[k].segs; break; }
   }
   // на виде слева всё внутри закрыто боковиной: размеры только по сквозным деталям (дно, крышка, цоколь)
   var chYside = chY;
-  return { chX: chX, chY: chY, chYf: chYfront, chYs: chYside, chZ: chZ, chF: chF, cols: cols };
+  return { chX: chX, chXc: chXc, chY: chY, chYf: chYfront, chYs: chYside, chZ: chZ, chF: chF, cols: cols };
 }
 
 /* цепочка со сквозным замыканием: детали + просветы, засечки вместо стрелок */
@@ -4686,7 +4731,15 @@ function __shBuild(parts, opt) {
   var VW = __shViews();
   var noFac = P.filter(function (m) { return !m.facade; });
   if (!noFac.length) noFac = P;
-  var st = __shStruct(P, noFac, mn, mx);
+  // габарит корпуса без фасадов: фасады могут выступать за него (накладные, цоколь)
+  var cmn = [1e18, 1e18, 1e18], cmx = [-1e18, -1e18, -1e18];
+  noFac.forEach(function (m) {
+    for (var k = 0; k < 3; k++) {
+      if (m.min[k] < cmn[k]) cmn[k] = m.min[k];
+      if (m.max[k] > cmx[k]) cmx[k] = m.max[k];
+    }
+  });
+  var st = __shStruct(P, noFac, mn, mx, cmn, cmx);
   var plan = __shPlan(W, H, D), s = plan.s, C = plan.cells, mg = plan.m;
 
   /* ----- лист 1 ----- */
@@ -4698,22 +4751,27 @@ function __shBuild(parts, opt) {
     var map = __shMapper(vw, box, ox, oy, s);
     var r = __shCaption(cell, title, __shScaleLabel(plan.den));
     r += __shParts(items, vw, map, false);
-    var wpx = (box[2] - box[0]) * s, hpx = (box[3] - box[1]) * s;
-    var hAx, vAx, hv, vv;
-    if (id === 'front' || id === 'nofac') { hAx = 0; vAx = 1; hv = W; vv = H; }
-    else if (id === 'left') { hAx = 2; vAx = 1; hv = D; vv = H; }
-    else { hAx = 0; vAx = 2; hv = W; vv = D; }
-    function hpt(b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], oy + hpx]; }
-    function vpt(b) { var q = [0, 0, 0]; q[vAx] = b; return [ox, map(q)[1]]; }
+    // на виде без фасадов размеры привязаны к корпусу, на остальных — ко всему изделию
+    var ext = id === 'nofac' ? [cmn, cmx] : [mn, mx];
+    var eb = __shProjBox(ext[0], ext[1], vw);
+    var xL = ox + (eb[0] - box[0]) * s, xR = ox + (eb[2] - box[0]) * s;
+    var yT = oy + (box[3] - eb[3]) * s, yB = oy + (box[3] - eb[1]) * s;
+    var hAx, vAx;
+    if (id === 'front' || id === 'nofac') { hAx = 0; vAx = 1; }
+    else if (id === 'left') { hAx = 2; vAx = 1; }
+    else { hAx = 0; vAx = 2; }
+    var hv = ext[1][hAx] - ext[0][hAx], vv = ext[1][vAx] - ext[0][vAx];
+    function hpt(b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], yB]; }
+    function vpt(b) { var q = [0, 0, 0]; q[vAx] = b; return [xL, map(q)[1]]; }
     var hChain = [], vChain = [], hMin = 2.5;
     if (id === 'front') { hChain = st.chF; hMin = 10; }
-    else if (id === 'nofac') { hChain = st.chX; vChain = st.chYf; }
+    else if (id === 'nofac') { hChain = st.chXc; vChain = st.chYf; }
     else if (id === 'left') { hChain = st.chZ; vChain = st.chYs; }
     else { hChain = st.chX; vChain = st.chZ; }
     r += __shChain(hChain, hpt, [0, 7], hMin);
     r += __shChain(vChain, vpt, [-7, 0], 2.5);
-    r += __shDim([ox, oy + hpx], [ox + wpx, oy + hpx], [0, 16], String(Math.round(hv)));
-    r += __shDim([ox, oy + hpx], [ox, oy], [-16, 0], String(Math.round(vv)));
+    r += __shDim([xL, yB], [xR, yB], [0, 16], String(Math.round(hv)));
+    r += __shDim([xL, yB], [xL, yT], [-16, 0], String(Math.round(vv)));
     if (id === 'nofac' && opt.inner !== false) {
       var i, j;
       for (i = 0; i < st.cols.length; i++) {
@@ -4748,7 +4806,7 @@ function __shBuild(parts, opt) {
     ? [{ x: A.x0, y: A.y0, w: cw, h: AH }, { x: A.x0 + cw + g2, y: A.y0, w: cw, h: AH }]
     : [{ x: A.x0, y: A.y0, w: cw, h: AH }];
   var body2 = '';
-  function axo(cell, items, title) {
+  function axo(cell, items, title, bmn, bmx) {
     var ox = cell.x + (cell.w - uw * sa) / 2, oy = cell.y + tH + (cell.h - tH - wh * sa) / 2;
     var map = __shMapper(VW.axo, axBox, ox, oy, sa);
     var r = __shCaption(cell, title, '');
@@ -4757,16 +4815,16 @@ function __shBuild(parts, opt) {
       var x = __shDot(d3, VW.axo.r), y = -__shDot(d3, VW.axo.u), l = Math.hypot(x, y) || 1;
       return [x / l * 10, y / l * 10];
     }
-    r += __shDim(map([mn[0], mn[1], mx[2]]), map([mx[0], mn[1], mx[2]]), dir2([0, -1, 0]), String(Math.round(W)));
-    r += __shDim(map([mn[0], mn[1], mx[2]]), map([mn[0], mx[1], mx[2]]), dir2([-1, 0, 0]), String(Math.round(H)));
-    r += __shDim(map([mx[0], mn[1], mx[2]]), map([mx[0], mn[1], mn[2]]), dir2([1, 0, 0]), String(Math.round(D)));
+    r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmx[2]]), dir2([0, -1, 0]), String(Math.round(bmx[0] - bmn[0])));
+    r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmn[0], bmx[1], bmx[2]]), dir2([-1, 0, 0]), String(Math.round(bmx[1] - bmn[1])));
+    r += __shDim(map([bmx[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmn[2]]), dir2([1, 0, 0]), String(Math.round(bmx[2] - bmn[2])));
     return r;
   }
   if (two) {
-    body2 += axo(cellsA[0], P, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0441 \u0444\u0430\u0441\u0430\u0434\u0430\u043C\u0438');
-    body2 += axo(cellsA[1], noFac, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432');
+    body2 += axo(cellsA[0], P, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0441 \u0444\u0430\u0441\u0430\u0434\u0430\u043C\u0438', mn, mx);
+    body2 += axo(cellsA[1], noFac, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432', cmn, cmx);
   } else {
-    body2 += axo(cellsA[0], P, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F');
+    body2 += axo(cellsA[0], P, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F', mn, mx);
   }
   var sheet2 = __shFrame(opt, 2, 2, '\u0431/\u043C', body2);
 
@@ -4866,7 +4924,7 @@ function __sheetInit() {
   });
 }
 
-var __VER="1.26",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.28",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
