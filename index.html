@@ -244,9 +244,9 @@
 
   /* ---------- режим показа клиенту ---------- */
   .client #sidebar,.client #btn-panel,.client #search,.client #explode-wrap,
-  .client #views,.client #btn-multi,.client #btn-rect,
-  .client #btn-links,.client #btn-showall,.client #btn-open,
-  .client #btn-link,.client #btn-sheet,.client #load-note,.client #tag-actions,.client #tag-block,
+  .client #btn-multi,.client #btn-rect,
+  .client #btn-links,.client #btn-open,
+  .client #btn-link,.client #btn-sheet,.client #load-note,.client #btn-isolate,.client #tag-block,
   .client #tag-pos-label,.client #tag-pos{display:none !important;}
 
   .client #tag-name{margin-top:0;}
@@ -5190,7 +5190,7 @@ function __sheetInit() {
   });
 }
 
-var __VER="1.34",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.35",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
