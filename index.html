@@ -451,7 +451,7 @@
     <label class="chk"><input id="sh-hw" type="checkbox" checked>Фурнитура</label>
     <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
     <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
-    <label>Ракурс
+    <label title="Можно включить несколько — на каждый добавится отдельный лист">Ракурс(ы)
       <div class="sh-angles" id="sh-angles">
         <button type="button" class="sh-ang" data-a="fr" title="Спереди-справа">↙</button>
         <button type="button" class="sh-ang" data-a="fl" title="Спереди-слева">↘</button>
@@ -4889,8 +4889,8 @@ function __shBuild(parts, opt) {
     }
   });
   var W = mx[0] - mn[0], H = mx[1] - mn[1], D = mx[2] - mn[2];
-  var axoAngle = opt.axoAngle || 'fr';
-  var VW = __shViews(axoAngle);
+  var axoAngles = opt.axoAngles && opt.axoAngles.length ? opt.axoAngles : [opt.axoAngle || 'fr'];
+  var VW = __shViews(axoAngles[0]);
   var noFac = P.filter(function (m) { return !m.facade; });
   if (!noFac.length) noFac = P;
   // габарит корпуса без фасадов: фасады могут выступать за него (накладные, цоколь)
@@ -4954,7 +4954,7 @@ function __shBuild(parts, opt) {
       }
     }
     if (id === 'front' && hinges.length) {
-      for (i = 0; i < hinges.length; i++) r += __shHingeMark(map([hinges[i].x, hinges[i].y, 0]), 2.2);
+      for (i = 0; i < hinges.length; i++) r += __shHingeMark(map([hinges[i].x, hinges[i].y, 0]), Math.max(0.5, 17.5 * sLocal));
     }
     if (id === 'front' && openings.length) {
       for (i = 0; i < openings.length; i++) {
@@ -4995,41 +4995,54 @@ function __shBuild(parts, opt) {
   }
   var sheet1 = frontSheets[0];
 
-  /* ----- лист 2: аксонометрия ----- */
+  /* ----- лист(ы) с аксонометрией — один на каждый выбранный ракурс ----- */
+  var axoLabel = {
+    fr: '\u0441\u043F\u0435\u0440\u0435\u0434\u0438-\u0441\u043F\u0440\u0430\u0432\u0430',
+    fl: '\u0441\u043F\u0435\u0440\u0435\u0434\u0438-\u0441\u043B\u0435\u0432\u0430',
+    br: '\u0441\u0437\u0430\u0434\u0438-\u0441\u043F\u0440\u0430\u0432\u0430',
+    bl: '\u0441\u0437\u0430\u0434\u0438-\u0441\u043B\u0435\u0432\u0430'
+  };
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 }, g2 = 6, mA = 17, tH = 7;
   var AH = A.y1 - A.y0, AW = A.x1 - A.x0;
-  var axBox = __shProjBox(mn, mx, VW.axo);
-  var uw = axBox[2] - axBox[0], wh = axBox[3] - axBox[1];
-  var two = facades > 0;
-  var cw = two ? (AW - g2) / 2 : AW;
-  var sa = Math.min((cw - 2 * mA) / uw, (AH - tH - 2 * mA) / wh);
-  var cellsA = two
-    ? [{ x: A.x0, y: A.y0, w: cw, h: AH }, { x: A.x0 + cw + g2, y: A.y0, w: cw, h: AH }]
-    : [{ x: A.x0, y: A.y0, w: cw, h: AH }];
-  var body2 = '';
-  function axo(cell, items, title, bmn, bmx) {
-    var ox = cell.x + (cell.w - uw * sa) / 2, oy = cell.y + tH + (cell.h - tH - wh * sa) / 2;
-    var map = __shMapper(VW.axo, axBox, ox, oy, sa);
-    var r = __shCaption(cell, title, '');
-    r += __shParts(items, VW.axo, map, true);
-    function dir2(d3) {
-      var x = __shDot(d3, VW.axo.r), y = -__shDot(d3, VW.axo.u), l = Math.hypot(x, y) || 1;
-      return [x / l * 10, y / l * 10];
-    }
-    r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmx[2]]), dir2([0, -1, 0]), String(Math.round(bmx[0] - bmn[0])));
-    r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmn[0], bmx[1], bmx[2]]), dir2([-1, 0, 0]), String(Math.round(bmx[1] - bmn[1])));
-    r += __shDim(map([bmx[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmn[2]]), dir2([1, 0, 0]), String(Math.round(bmx[2] - bmn[2])));
-    return r;
+  var axoSheets = [], totalSheets = frontSheets.length + axoAngles.length;
+  for (var aai = 0; aai < axoAngles.length; aai++) {
+    var VWa = __shViews(axoAngles[aai]);
+    var axBox = __shProjBox(mn, mx, VWa.axo);
+    var uw = axBox[2] - axBox[0], wh = axBox[3] - axBox[1];
+    var two = facades > 0;
+    var cw = two ? (AW - g2) / 2 : AW;
+    var sa = Math.min((cw - 2 * mA) / uw, (AH - tH - 2 * mA) / wh);
+    var cellsA = two
+      ? [{ x: A.x0, y: A.y0, w: cw, h: AH }, { x: A.x0 + cw + g2, y: A.y0, w: cw, h: AH }]
+      : [{ x: A.x0, y: A.y0, w: cw, h: AH }];
+    var body2 = '';
+    (function (VWa, axBox, uw, wh, sa) {
+      function axo(cell, items, title, bmn, bmx) {
+        var ox = cell.x + (cell.w - uw * sa) / 2, oy = cell.y + tH + (cell.h - tH - wh * sa) / 2;
+        var map = __shMapper(VWa.axo, axBox, ox, oy, sa);
+        var r = __shCaption(cell, title, '');
+        r += __shParts(items, VWa.axo, map, true);
+        function dir2(d3) {
+          var x = __shDot(d3, VWa.axo.r), y = -__shDot(d3, VWa.axo.u), l = Math.hypot(x, y) || 1;
+          return [x / l * 10, y / l * 10];
+        }
+        r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmx[2]]), dir2([0, -1, 0]), String(Math.round(bmx[0] - bmn[0])));
+        r += __shDim(map([bmn[0], bmn[1], bmx[2]]), map([bmn[0], bmx[1], bmx[2]]), dir2([-1, 0, 0]), String(Math.round(bmx[1] - bmn[1])));
+        r += __shDim(map([bmx[0], bmn[1], bmx[2]]), map([bmx[0], bmn[1], bmn[2]]), dir2([1, 0, 0]), String(Math.round(bmx[2] - bmn[2])));
+        return r;
+      }
+      var suffix = axoAngles.length > 1 ? ' (' + axoLabel[axoAngles[aai]] + ')' : '';
+      if (two) {
+        body2 += axo(cellsA[0], Pall, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0441 \u0444\u0430\u0441\u0430\u0434\u0430\u043C\u0438' + suffix, mn, mx);
+        body2 += axo(cellsA[1], noFacAll, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432' + suffix, cmn, cmx);
+      } else {
+        body2 += axo(cellsA[0], Pall, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F' + suffix, mn, mx);
+      }
+    })(VWa, axBox, uw, wh, sa);
+    axoSheets.push(__shFrame(opt, frontSheets.length + aai + 1, totalSheets, '\u0431/\u043C', body2));
   }
-  if (two) {
-    body2 += axo(cellsA[0], Pall, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0441 \u0444\u0430\u0441\u0430\u0434\u0430\u043C\u0438', mn, mx);
-    body2 += axo(cellsA[1], noFacAll, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432', cmn, cmx);
-  } else {
-    body2 += axo(cellsA[0], Pall, '\u0410\u043A\u0441\u043E\u043D\u043E\u043C\u0435\u0442\u0440\u0438\u044F', mn, mx);
-  }
-  var sheet2 = __shFrame(opt, frontSheets.length + 1, frontSheets.length + 1, '\u0431/\u043C', body2);
 
-  return { svg: sheet1, sheets: frontSheets.concat([sheet2]), den: plan.den, tpl: plan.tpl, panels: P.length,
+  return { svg: sheet1, sheets: frontSheets.concat(axoSheets), den: plan.den, tpl: plan.tpl, panels: P.length,
            facades: facades, hw: extras.length, hinges: hinges.length, openings: openings.length,
            size: [Math.round(W), Math.round(H), Math.round(D)] };
 }
@@ -5061,9 +5074,9 @@ function __shInput() {
   return out;
 }
 function __shAngleSync() {
-  var btns = document.querySelectorAll('.sh-ang'), k;
+  var btns = document.querySelectorAll('.sh-ang'), k, list = _e.shAngles || ['fr'];
   for (k = 0; k < btns.length; k++) {
-    if (btns[k].getAttribute('data-a') === (_e.shAngle || 'fr')) btns[k].classList.add('on');
+    if (list.indexOf(btns[k].getAttribute('data-a')) >= 0) btns[k].classList.add('on');
     else btns[k].classList.remove('on');
   }
 }
@@ -5076,7 +5089,7 @@ function __shRender() {
     showHw: document.getElementById('sh-hw').checked,
     showHinges: document.getElementById('sh-hinges').checked,
     showOpen: document.getElementById('sh-open').checked,
-    axoAngle: _e.shAngle || 'fr' 
+    axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr']
   });
   _e.shSheets = res.sheets || [];
   document.getElementById('sh-wrap').innerHTML = _e.shSheets.map(function (sv) {
@@ -5102,7 +5115,8 @@ function __sheetOpen() {
   document.getElementById('sh-words').value = __shStore('words') || '\u0444\u0430\u0441\u0430\u0434, \u0434\u0432\u0435\u0440, \u043F\u043E\u043A\u0440\u0430\u0441\u043A';
   document.getElementById('sh-inner').checked = __shStore('inner') !== '0';
   document.getElementById('sh-onesheet').checked = __shStore('onesheet') === '1';
-  _e.shAngle = __shStore('angle') || 'fr';
+  try { _e.shAngles = JSON.parse(__shStore('angle') || '["fr"]'); } catch (eAng) { _e.shAngles = ['fr']; }
+  if (!_e.shAngles.length) _e.shAngles = ['fr'];
   __shAngleSync();
   document.getElementById('sh-hw').checked = __shStore('hw') !== '0';
   document.getElementById('sh-hinges').checked = __shStore('hinges') !== '0';
@@ -5139,8 +5153,11 @@ function __sheetInit() {
   var angBtns = document.querySelectorAll('.sh-ang'), abi;
   for (abi = 0; abi < angBtns.length; abi++) {
     angBtns[abi].addEventListener('click', function () {
-      _e.shAngle = this.getAttribute('data-a');
-      __shStore('angle', _e.shAngle);
+      var a = this.getAttribute('data-a'), list = _e.shAngles || ['fr'], ix = list.indexOf(a);
+      if (ix >= 0) { if (list.length > 1) list.splice(ix, 1); }
+      else list.push(a);
+      _e.shAngles = list;
+      __shStore('angle', JSON.stringify(list));
       __shAngleSync();
       __shRender();
     });
@@ -5173,7 +5190,7 @@ function __sheetInit() {
   });
 }
 
-var __VER="1.33",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.34",__VDATE="28.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
