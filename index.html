@@ -199,6 +199,8 @@
   #sheet .sh-bar label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--ink2);letter-spacing:.02em;}
   #sheet .sh-bar label.chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding-bottom:9px;}
   #sheet .sh-angles{display:flex;gap:2px;}
+  #sheet .sh-vlist{display:inline-flex;gap:8px;margin-left:4px;}
+  #sheet .sh-vlist label{white-space:nowrap;}
   #sheet .sh-ang{
     width:26px;height:26px;border:1px solid var(--line);background:var(--bg);border-radius:6px;
     font-size:14px;cursor:pointer;color:var(--ink2);line-height:1;
@@ -448,6 +450,15 @@
     <label>Фасады: слова в названии<input id="sh-words" type="text" style="width:170px" autocomplete="off"></label>
     <label class="chk"><input id="sh-inner" type="checkbox" checked>Размеры в свету</label>
     <label class="chk"><input id="sh-onesheet" type="checkbox">По листу на вид</label>
+    <label title="Отключите ненужные — лист соберётся только из отмеченных">Виды
+      <span class="sh-vlist" id="sh-vlist">
+        <label class="chk sh-v"><input type="checkbox" data-v="front" checked>Спереди</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="nofac" checked>Без фасадов</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="left" checked>Слева</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="right">Справа</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="top" checked>Сверху</label>
+      </span>
+    </label>
     <label class="chk"><input id="sh-hw" type="checkbox" checked>Фурнитура</label>
     <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
     <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
@@ -4342,6 +4353,7 @@ function __shViews(angle) {
   return {
     front: { r: [1, 0, 0], u: [0, 1, 0], v: [0, 0, -1], tn: [0, 0, 1] },
     left: { r: [0, 0, 1], u: [0, 1, 0], v: [1, 0, 0], tn: [1, 0, 0] },
+    right: { r: [0, 0, -1], u: [0, 1, 0], v: [-1, 0, 0], tn: [-1, 0, 0] },
     top: { r: [1, 0, 0], u: [0, 0, -1], v: [0, -1, 0], tn: [0, 1, 0] },
     axo: { r: r, u: u, v: [-b[0], -b[1], -b[2]], axo: true }
   };
@@ -4752,28 +4764,55 @@ function __shGapDim(p0, p1, txt) {
 }
 
 /* ---------- раскладка: лист 1 — ортогональные виды ---------- */
-function __shPlan(W, H, D) {
+/* какие виды из набора считаются «строчными» (мерятся по W,H) и «верхним»
+   (мерится по W,D) — top всегда кладём отдельной строкой снизу, если он
+   не поместился в общую строку целиком */
+var __SH_ROW_VIEWS = ['front', 'nofac', 'left', 'right'];
+
+function __shPlan(W, H, D, views) {
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   A.w = A.x1 - A.x0; A.h = A.y1 - A.y0;
   var g = 6, tH = 7, mL = 24, mR = 6, mT = 3, mB = 22;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   function cell(a, b, s) { return { w: a * s + mL + mR, h: b * s + tH + mT + mB }; }
-  var i, pick = null, f, l, t, s;
+  var rowIds = __SH_ROW_VIEWS.filter(function (v) { return views.indexOf(v) >= 0; });
+  var hasTop = views.indexOf('top') >= 0;
+  var i, pick = null, s;
+  function need(id, s) {
+    if (id === 'top') return cell(W, D, s);
+    if (id === 'left' || id === 'right') return cell(D, H, s);
+    return cell(W, H, s);
+  }
   for (i = 0; i < dens.length; i++) {
-    s = 1 / dens[i]; f = cell(W, H, s); l = cell(D, H, s); t = cell(W, D, s);
-    var t1 = (f.w * 2 + l.w + g * 2 <= A.w) && (f.h + g + t.h <= A.h);
-    var t2 = (f.w * 2 + l.w + t.w + g * 3 <= A.w) && (Math.max(f.h, t.h) <= A.h);
+    s = 1 / dens[i];
+    var rowW = 0, rowH = 0, k;
+    for (k = 0; k < rowIds.length; k++) { var c = need(rowIds[k], s); rowW += c.w + (k ? g : 0); if (c.h > rowH) rowH = c.h; }
+    var tCell = hasTop ? need('top', s) : null;
+    // вариант 1: top отдельной строкой снизу (как раньше — обычно даёт крупнее масштаб)
+    var t1 = hasTop
+      ? (rowW <= A.w && tCell.w <= A.w) && (rowH + g + tCell.h <= A.h)
+      : rowW <= A.w && rowH <= A.h;
+    // вариант 2: top в общей строке — если ширины хватает на всё сразу
+    var t2 = hasTop && (rowW + (rowIds.length ? g : 0) + tCell.w <= A.w) && (Math.max(rowH, tCell.h) <= A.h);
     if (t1 || t2) { pick = { den: dens[i], s: s, tpl: t1 ? 1 : 2 }; break; }
   }
   if (!pick) pick = { den: dens[dens.length - 1], s: 1 / dens[dens.length - 1], tpl: 1 };
-  s = pick.s; f = cell(W, H, s); l = cell(D, H, s); t = cell(W, D, s);
-  var cells = {
-    front: { x: A.x0, y: A.y0, w: f.w, h: f.h },
-    nofac: { x: A.x0 + f.w + g, y: A.y0, w: f.w, h: f.h },
-    left: { x: A.x0 + 2 * (f.w + g), y: A.y0, w: l.w, h: f.h }
-  };
-  if (pick.tpl === 1) cells.top = { x: A.x0, y: A.y0 + f.h + g, w: t.w, h: t.h };
-  else cells.top = { x: A.x0 + 2 * (f.w + g) + l.w + g, y: A.y0, w: t.w, h: t.h };
+  s = pick.s;
+  var cells = {}, x = A.x0, k2;
+  for (k2 = 0; k2 < rowIds.length; k2++) {
+    var cc = need(rowIds[k2], s);
+    cells[rowIds[k2]] = { x: x, y: A.y0, w: cc.w, h: cc.h };
+    x += cc.w + g;
+  }
+  if (hasTop) {
+    var tc = need('top', s);
+    if (pick.tpl === 1) {
+      var rowH2 = 0; for (k2 = 0; k2 < rowIds.length; k2++) if (cells[rowIds[k2]].h > rowH2) rowH2 = cells[rowIds[k2]].h;
+      cells.top = { x: A.x0, y: A.y0 + rowH2 + g, w: tc.w, h: tc.h };
+    } else {
+      cells.top = { x: x, y: A.y0, w: tc.w, h: tc.h };
+    }
+  }
   return { den: pick.den, s: s, cells: cells, m: { L: mL, T: mT, tH: tH }, tpl: pick.tpl };
 }
 
@@ -4948,8 +4987,8 @@ function __shBuild(parts, opt) {
   // для ОТРИСОВКИ (не для расчёта габаритов и цепочек!) добавляем видимую фурнитуру
   var Pall = extras.length ? P.concat(extras) : P;
   var noFacAll = extras.length ? noFac.concat(extras) : noFac;
-  var plan = __shPlan(W, H, D), s = plan.s, C = plan.cells, mg = plan.m;
   var onePerSheet = !!opt.onePerSheet;
+  var finalDen = 1, finalTpl = 1;
 
   /* ----- лист 1 (или 1..4, если каждый вид на своём листе) ----- */
   var out = '';
@@ -5009,30 +5048,42 @@ function __shBuild(parts, opt) {
   }
   var nfTitle = facades ? '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438 \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432'
                         : '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438, \u0440\u0430\u0437\u043C\u0435\u0440\u044B \u0432 \u0441\u0432\u0435\u0442\u0443';
+  // какие ортогональные виды включены — по умолчанию как раньше (без «справа»,
+  // чтобы у всех, кто не трогал настройку, лист не поменялся)
+  var enabledViews = opt.views && opt.views.length ? opt.views : ['front', 'nofac', 'left', 'top'];
+  var viewsMeta = {
+    front: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438' },
+    nofac: { items: noFacAll, title: nfTitle },
+    left: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u043B\u0435\u0432\u0430' },
+    right: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u043F\u0440\u0430\u0432\u0430' },
+    top: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u0432\u0435\u0440\u0445\u0443' }
+  };
+  var viewOrder = ['front', 'nofac', 'left', 'right', 'top'];
+  var activeViews = viewOrder.filter(function (v) { return enabledViews.indexOf(v) >= 0; });
+  function viewNeed(id) {
+    if (id === 'top') return [W, D];
+    if (id === 'left' || id === 'right') return [D, H];
+    return [W, H];
+  }
   var frontSheets = [];
-  if (onePerSheet) {
-    var views4 = [
-      ['front', Pall, '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438'],
-      ['nofac', noFacAll, nfTitle],
-      ['left', Pall, '\u0412\u0438\u0434 \u0441\u043B\u0435\u0432\u0430'],
-      ['top', Pall, '\u0412\u0438\u0434 \u0441\u0432\u0435\u0440\u0445\u0443']
-    ];
-    for (var vi4 = 0; vi4 < views4.length; vi4++) {
-      var id4 = views4[vi4][0], items4 = views4[vi4][1], title4 = views4[vi4][2];
-      var hv4, vv4;
-      if (id4 === 'front' || id4 === 'nofac') { hv4 = W; vv4 = H; }
-      else if (id4 === 'left') { hv4 = D; vv4 = H; }
-      else { hv4 = W; vv4 = D; }
-      var pl1 = __shPlanOne(hv4, vv4);
-      var out1 = ortho(id4, pl1.cell, items4, title4, pl1.s, pl1.m, pl1.den);
-      frontSheets.push(__shFrame(opt, vi4 + 1, views4.length + 1, '1:' + String(pl1.den).replace('.', ','), out1));
+  if (!activeViews.length) {
+    frontSheets.push(__shFrame(opt, 1, 1, '\u2014', ''));
+  } else if (onePerSheet) {
+    for (var vi4 = 0; vi4 < activeViews.length; vi4++) {
+      var id4 = activeViews[vi4], vm4 = viewsMeta[id4], need4 = viewNeed(id4);
+      var pl1 = __shPlanOne(need4[0], need4[1]);
+      var out1 = ortho(id4, pl1.cell, vm4.items, vm4.title, pl1.s, pl1.m, pl1.den);
+      frontSheets.push(__shFrame(opt, vi4 + 1, activeViews.length + 1, '1:' + String(pl1.den).replace('.', ','), out1));
+      if (pl1.den > finalDen) finalDen = pl1.den;
     }
   } else {
-    out += ortho('front', C.front, Pall, '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438', s, mg, plan.den);
-    out += ortho('nofac', C.nofac, noFacAll, nfTitle, s, mg, plan.den);
-    out += ortho('left', C.left, Pall, '\u0412\u0438\u0434 \u0441\u043B\u0435\u0432\u0430', s, mg, plan.den);
-    out += ortho('top', C.top, Pall, '\u0412\u0438\u0434 \u0441\u0432\u0435\u0440\u0445\u0443', s, mg, plan.den);
-    frontSheets.push(__shFrame(opt, 1, 2, '1:' + String(plan.den).replace('.', ','), out));
+    var plan2 = __shPlan(W, H, D, activeViews), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
+    finalDen = plan2.den; finalTpl = plan2.tpl;
+    for (var vi5 = 0; vi5 < activeViews.length; vi5++) {
+      var id5 = activeViews[vi5], vm5 = viewsMeta[id5];
+      out += ortho(id5, C2[id5], vm5.items, vm5.title, s2, mg2, plan2.den);
+    }
+    frontSheets.push(__shFrame(opt, 1, 2, '1:' + String(plan2.den).replace('.', ','), out));
   }
   var sheet1 = frontSheets[0];
 
@@ -5083,7 +5134,7 @@ function __shBuild(parts, opt) {
     axoSheets.push(__shFrame(opt, frontSheets.length + aai + 1, totalSheets, '\u0431/\u043C', body2));
   }
 
-  return { svg: sheet1, sheets: frontSheets.concat(axoSheets), den: plan.den, tpl: plan.tpl, panels: P.length,
+  return { svg: sheet1, sheets: frontSheets.concat(axoSheets), den: finalDen, tpl: finalTpl, panels: P.length,
            facades: facades, hw: extras.length, hinges: hinges.length, openings: openings.length,
            size: [Math.round(W), Math.round(H), Math.round(D)] };
 }
@@ -5114,6 +5165,10 @@ function __shInput() {
   }
   return out;
 }
+function __shViewsSync() {
+  var boxes = document.querySelectorAll('.sh-v input'), k, list = _e.shViews || ['front', 'nofac', 'left', 'top'];
+  for (k = 0; k < boxes.length; k++) boxes[k].checked = list.indexOf(boxes[k].getAttribute('data-v')) >= 0;
+}
 function __shAngleSync() {
   var btns = document.querySelectorAll('.sh-ang'), k, list = _e.shAngles || ['fr'];
   for (k = 0; k < btns.length; k++) {
@@ -5130,7 +5185,8 @@ function __shRender() {
     showHw: document.getElementById('sh-hw').checked,
     showHinges: document.getElementById('sh-hinges').checked,
     showOpen: document.getElementById('sh-open').checked,
-    axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr']
+    axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr'],
+    views: _e.shViews && _e.shViews.length ? _e.shViews : ['front', 'nofac', 'left', 'top']
   });
   _e.shSheets = res.sheets || [];
   document.getElementById('sh-wrap').innerHTML = _e.shSheets.map(function (sv) {
@@ -5160,6 +5216,9 @@ function __sheetOpen() {
   try { _e.shAngles = JSON.parse(__shStore('angle') || '["fr"]'); } catch (eAng) { _e.shAngles = ['fr']; }
   if (!_e.shAngles.length) _e.shAngles = ['fr'];
   __shAngleSync();
+  try { _e.shViews = JSON.parse(__shStore('views') || '["front","nofac","left","top"]'); } catch (eV) { _e.shViews = ['front', 'nofac', 'left', 'top']; }
+  if (!_e.shViews.length) _e.shViews = ['front', 'nofac', 'left', 'top'];
+  __shViewsSync();
   document.getElementById('sh-hw').checked = __shStore('hw') !== '0';
   document.getElementById('sh-hinges').checked = __shStore('hinges') !== '0';
   document.getElementById('sh-open').checked = __shStore('open') !== '0';
@@ -5176,6 +5235,17 @@ function __sheetInit() {
     __shStore('inner', document.getElementById('sh-inner').checked ? '1' : '0');
     __shRender();
   });
+  var vBoxes = document.querySelectorAll('.sh-v input'), vbi;
+  for (vbi = 0; vbi < vBoxes.length; vbi++) {
+    vBoxes[vbi].addEventListener('change', function () {
+      var v = this.getAttribute('data-v'), list = _e.shViews || ['front', 'nofac', 'left', 'top'], ix = list.indexOf(v);
+      if (this.checked) { if (ix < 0) list.push(v); }
+      else { if (list.length > 1) list.splice(ix, 1); else this.checked = true; }
+      _e.shViews = list;
+      __shStore('views', JSON.stringify(list));
+      __shRender();
+    });
+  }
   document.getElementById('sh-onesheet').addEventListener('change', function () {
     __shStore('onesheet', document.getElementById('sh-onesheet').checked ? '1' : '0');
     __shRender();
@@ -5271,7 +5341,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.39",__VDATE="30.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.40",__VDATE="30.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
