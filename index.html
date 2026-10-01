@@ -454,6 +454,8 @@
       <span class="sh-vlist" id="sh-vlist">
         <label class="chk sh-v"><input type="checkbox" data-v="front" checked>Спереди</label>
         <label class="chk sh-v"><input type="checkbox" data-v="nofac" checked>Без фасадов</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="back">Сзади</label>
+        <label class="chk sh-v"><input type="checkbox" data-v="bnofac">Сзади без фасадов</label>
         <label class="chk sh-v"><input type="checkbox" data-v="left" checked>Слева</label>
         <label class="chk sh-v"><input type="checkbox" data-v="right">Справа</label>
         <label class="chk sh-v"><input type="checkbox" data-v="top" checked>Сверху</label>
@@ -462,6 +464,7 @@
     <label class="chk"><input id="sh-hw" type="checkbox" checked>Фурнитура</label>
     <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
     <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
+    <label class="chk" title="Вертикальная размерная цепочка справа: полки, швы, перекладины, планка пантографа"><input id="sh-rdim" type="checkbox" checked>Размеры справа</label>
     <label title="Можно включить несколько — на каждый добавится отдельный лист">Ракурс(ы)
       <div class="sh-angles" id="sh-angles">
         <button type="button" class="sh-ang" data-a="fr" title="Спереди-справа">↙</button>
@@ -4265,7 +4268,7 @@ function __shHex(v) {
 }
 
 /* ---------- подготовка сетки панели ---------- */
-function __shMesh(src) {
+function __shMesh(src, smooth) {
   var arr = src.pos;
   if (!arr || arr.length < 9) return null;
   var idx = (src.idx && src.idx.length) ? src.idx : null;
@@ -4308,7 +4311,9 @@ function __shMesh(src) {
   if (vol < 0) { for (i = 0; i < N.length; i++) N[i] = -N[i]; }
 
   // характерные рёбра: граничные и с изломом больше 25 градусов
-  var nv = V.length / 3, em = new Map(), cosT = Math.cos(25 * Math.PI / 180), E = [];
+  // для фурнитуры (smooth) пороге излома выше: на тонкой трубе мелкие грани иначе сливаются в чёрную заливку,
+  // а форму всё равно задаёт силуэт
+  var nv = V.length / 3, em = new Map(), cosT = Math.cos((smooth ? 50 : 25) * Math.PI / 180), E = [], S = [];
   for (t = 0; t < nt; t++) {
     if (!ok[t]) continue;
     for (c = 0; c < 3; c++) {
@@ -4332,9 +4337,16 @@ function __shMesh(src) {
         b: [V[e.w * 3], V[e.w * 3 + 1], V[e.w * 3 + 2]],
         t: e.t
       });
+    } else if (smooth) {
+      // гладкая кромка (труба, скругление): сама не рисуется, но может стать силуэтом на виде
+      S.push({
+        a: [V[e.u * 3], V[e.u * 3 + 1], V[e.u * 3 + 2]],
+        b: [V[e.w * 3], V[e.w * 3 + 1], V[e.w * 3 + 2]],
+        t: e.t
+      });
     }
   });
-  return { V: V, T: T, N: N, ok: ok, E: E, nt: nt, min: mn, max: mx, facade: false, name: '' };
+  return { V: V, T: T, N: N, ok: ok, E: E, S: S, nt: nt, min: mn, max: mx, facade: false, name: '' };
 }
 
 /* ---------- виды ---------- */
@@ -4354,6 +4366,7 @@ function __shViews(angle) {
     front: { r: [1, 0, 0], u: [0, 1, 0], v: [0, 0, -1], tn: [0, 0, 1] },
     left: { r: [0, 0, 1], u: [0, 1, 0], v: [1, 0, 0], tn: [1, 0, 0] },
     right: { r: [0, 0, -1], u: [0, 1, 0], v: [-1, 0, 0], tn: [-1, 0, 0] },
+    back: { r: [-1, 0, 0], u: [0, 1, 0], v: [0, 0, 1], tn: [0, 0, -1] },
     top: { r: [1, 0, 0], u: [0, 0, -1], v: [0, -1, 0], tn: [0, 1, 0] },
     axo: { r: r, u: u, v: [-b[0], -b[1], -b[2]], axo: true }
   };
@@ -4464,7 +4477,6 @@ function __shShade(nx, ny, nz, facade, hw) {
   var d = Math.max(0, (nx * L[0] + ny * L[1] + nz * L[2]) / ll);
   var g = 206 + 48 * d, r = g, gg = g, b = g;
   if (facade) { r = g + 3; gg = g - 4; b = g - 16; }
-  else if (hw) { r = g - 30; gg = g - 18; b = g - 2; }
   return '#' + __shHex(r) + __shHex(gg) + __shHex(b);
 }
 function __shPart(m, vw, map, axo) {
@@ -4502,6 +4514,23 @@ function __shPart(m, vw, map, axo) {
     if (seen[key]) continue;
     seen[key] = 1;
     d += 'M' + __shN(A2[0]) + ' ' + __shN(A2[1]) + 'L' + __shN(B2[0]) + ' ' + __shN(B2[1]);
+  }
+  // силуэт гладких деталей фурнитуры: ребро между обращённой к зрителю и отвёрнутой гранью
+  if (m.hw && m.S) {
+    for (q = 0; q < m.S.length; q++) {
+      e = m.S[q];
+      var f0 = (N[e.t[0] * 3] * v[0] + N[e.t[0] * 3 + 1] * v[1] + N[e.t[0] * 3 + 2] * v[2]) < -1e-6;
+      var f1 = (N[e.t[1] * 3] * v[0] + N[e.t[1] * 3 + 1] * v[1] + N[e.t[1] * 3 + 2] * v[2]) < -1e-6;
+      if (f0 === f1) continue;
+      var A3 = map(e.a), B3 = map(e.b);
+      if (Math.hypot(A3[0] - B3[0], A3[1] - B3[1]) < 0.03) continue;
+      var j1 = Math.round(A3[0] * 50) + ',' + Math.round(A3[1] * 50);
+      var j2 = Math.round(B3[0] * 50) + ',' + Math.round(B3[1] * 50);
+      var jk = j1 < j2 ? j1 + '|' + j2 : j2 + '|' + j1;
+      if (seen[jk]) continue;
+      seen[jk] = 1;
+      d += 'M' + __shN(A3[0]) + ' ' + __shN(A3[1]) + 'L' + __shN(B3[0]) + ' ' + __shN(B3[1]);
+    }
   }
   if (d) s += '<path d="' + d + '" fill="none" stroke="#000" stroke-width=".3" stroke-linecap="round" stroke-linejoin="round"/>';
   return s;
@@ -4705,8 +4734,48 @@ function __shStruct(P, noFac, mn, mx, cmn, cmx) {
   return { chX: chX, chXc: chXc, chY: chY, chYfList: chYfList, chYs: chYside, chZ: chZ, chF: chF, cols: cols };
 }
 
+/* уровни по высоте для цепочки справа: границы горизонтальных деталей и швов облицовки в крайней секции вида
+   (спереди — с максимальным x, сзади — с минимальным), оси перекладин и верх планки пантографа;
+   side: +1 — крайняя справа секция (вид спереди), -1 — крайняя слева по x (вид сзади, там она справа на листе) */
+function __shRightLevels(items, st, lo, hi, side, cmn, cmx, visFn) {
+  var gaps = (st.chXc || []).filter(function (g) { return g.t === 'g' && g.b - g.a >= 150; });
+  var colA = cmn[0], colB = cmx[0];
+  if (gaps.length) { var g0 = side > 0 ? gaps[gaps.length - 1] : gaps[0]; colA = g0.a; colB = g0.b; }
+  var cw = colB - colA, lv = [], hwLv = [];
+  // если секцию закрывает видимый фасад — размеры только по фасадам, содержимое за ними на виде не видно
+  if (visFn) {
+    var fv = items.filter(function (m) {
+      if (!m.facade || m.hw) return false;
+      var ex0 = m.max[0] - m.min[0], ov0 = Math.min(m.max[0], colB) - Math.max(m.min[0], colA);
+      return ex0 >= 100 && ov0 >= 0.6 * Math.min(ex0, cw) && visFn(m);
+    });
+    if (fv.length) items = fv;
+  }
+  items.forEach(function (m) {
+    var ex = m.max[0] - m.min[0], ey = m.max[1] - m.min[1];
+    var ov = Math.min(m.max[0], colB) - Math.max(m.min[0], colA);
+    if (m.hw) {
+      // перекладины и планка пантографа: ось тонкой перекладины или верх крупной сборки
+      if (ex >= 250 && ov >= 0.5 * Math.min(ex, cw)) hwLv.push(ey <= 60 ? (m.min[1] + m.max[1]) / 2 : m.max[1]);
+      return;
+    }
+    if (ex < 100 || ov < 0.6 * Math.min(ex, cw)) return;
+    lv.push(m.min[1], m.max[1]);
+  });
+  hwLv.sort(function (a, b) { return a - b; });
+  var hwUniq = [];
+  hwLv.forEach(function (v) { if (!hwUniq.length || v - hwUniq[hwUniq.length - 1] > 40) hwUniq.push(v); });
+  lv = lv.concat(hwUniq, [lo, hi]).filter(function (v) { return v >= lo - 0.5 && v <= hi + 0.5; })
+    .map(function (v) { return Math.min(hi, Math.max(lo, v)); });
+  lv.sort(function (a, b) { return a - b; });
+  var u = [];
+  lv.forEach(function (v) { if (!u.length || v - u[u.length - 1] >= 1) u.push(v); });
+  var segs = [], i;
+  for (i = 0; i + 1 < u.length; i++) segs.push({ a: u[i], b: u[i + 1], t: 'g' });
+  return segs;
+}
 /* цепочка со сквозным замыканием: детали + просветы, засечки вместо стрелок */
-function __shChain(segs, pt, off, minLabel) {
+function __shChain(segs, pt, off, minLabel, dists) {
   var n = segs.length;
   if (n < 2) return '';
   var bs = [segs[0].a], i;
@@ -4725,7 +4794,8 @@ function __shChain(segs, pt, off, minLabel) {
   var ang = Math.atan2(dy, dx) * 180 / Math.PI;
   while (ang >= 90) ang -= 180;
   while (ang < -90) ang += 180;
-  var rowEnd = [-1e9, -1e9], dists = [4, 7.4], fs = 2.8;
+  dists = dists || [4, 7.4];
+  var rowEnd = [-1e9, -1e9, -1e9], fs = 2.8;
   for (i = 0; i < n; i++) {
     var len = segs[i].b - segs[i].a;
     if (len < minLabel) continue;
@@ -4767,9 +4837,10 @@ function __shGapDim(p0, p1, txt) {
 /* какие виды из набора считаются «строчными» (мерятся по W,H) и «верхним»
    (мерится по W,D) — top всегда кладём отдельной строкой снизу, если он
    не поместился в общую строку целиком */
-var __SH_ROW_VIEWS = ['front', 'nofac', 'left', 'right'];
+var __SH_ROW_VIEWS = ['front', 'nofac', 'back', 'bnofac', 'left', 'right'];
 
-function __shPlan(W, H, D, views) {
+function __shPlan(W, H, D, views, rx) {
+  rx = rx || 0;
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   A.w = A.x1 - A.x0; A.h = A.y1 - A.y0;
   var g = 6, tH = 7, mL = 24, mR = 6, mT = 3, mB = 22;
@@ -4781,7 +4852,9 @@ function __shPlan(W, H, D, views) {
   function need(id, s) {
     if (id === 'top') return cell(W, D, s);
     if (id === 'left' || id === 'right') return cell(D, H, s);
-    return cell(W, H, s);
+    var c = cell(W, H, s);
+    if (rx) c.w += rx;   // вертикальная цепочка справа
+    return c;
   }
   for (i = 0; i < dens.length; i++) {
     s = 1 / dens[i];
@@ -4797,6 +4870,34 @@ function __shPlan(W, H, D, views) {
     if (t1 || t2) { pick = { den: dens[i], s: s, tpl: t1 ? 1 : 2 }; break; }
   }
   if (!pick) pick = { den: dens[dens.length - 1], s: 1 / dens[dens.length - 1], tpl: 1 };
+  // много видов (5 и больше): если в два ряда масштаб получается крупнее, чем в один — раскладываем в два ряда
+  if (rowIds.length + (hasTop ? 1 : 0) >= 5) {
+    var allIds = rowIds.concat(hasTop ? ['top'] : []), best2 = null, i2, kk, q2;
+    for (i2 = 0; i2 < dens.length && !best2; i2++) {
+      if (dens[i2] >= pick.den) break;
+      var s3 = 1 / dens[i2];
+      for (kk = 1; kk < allIds.length && !best2; kk++) {
+        var w1 = 0, h1 = 0, w2 = 0, h2 = 0;
+        for (q2 = 0; q2 < allIds.length; q2++) {
+          var cq = need(allIds[q2], s3);
+          if (q2 < kk) { w1 += cq.w + (q2 ? g : 0); if (cq.h > h1) h1 = cq.h; }
+          else { w2 += cq.w + (q2 > kk ? g : 0); if (cq.h > h2) h2 = cq.h; }
+        }
+        if (w1 <= A.w && w2 <= A.w && h1 + g + h2 <= A.h) best2 = { den: dens[i2], s: s3, k: kk };
+      }
+    }
+    if (best2) {
+      var cells2 = {}, xx = A.x0, yy = A.y0, rowTop = A.y0, rowMaxH = 0, q3;
+      for (q3 = 0; q3 < allIds.length; q3++) {
+        if (q3 === best2.k) { xx = A.x0; yy = A.y0 + rowMaxH + g; }
+        var c3 = need(allIds[q3], best2.s);
+        cells2[allIds[q3]] = { x: xx, y: yy, w: c3.w, h: c3.h };
+        xx += c3.w + g;
+        if (q3 < best2.k && c3.h > rowMaxH) rowMaxH = c3.h;
+      }
+      return { den: best2.den, s: best2.s, cells: cells2, m: { L: mL, T: mT, tH: tH }, tpl: 3 };
+    }
+  }
   s = pick.s;
   var cells = {}, x = A.x0, k2;
   for (k2 = 0; k2 < rowIds.length; k2++) {
@@ -4819,10 +4920,10 @@ function __shPlan(W, H, D, views) {
 function __shScaleLabel(den) { return '\u041C 1:' + String(den).replace('.', ','); }
 
 /* тот же лист A3, но один вид занимает всю рабочую область — для режима «по листу на вид» */
-function __shPlanOne(w, h) {
+function __shPlanOne(w, h, rx) {
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   var Aw = A.x1 - A.x0, Ah = A.y1 - A.y0;
-  var mL = 24, mR = 10, mT = 6, mB = 10, tH = 7;
+  var mL = 24, mR = 10 + (rx || 0), mT = 6, mB = 10, tH = 7;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   var i, den = dens[dens.length - 1];
   for (i = 0; i < dens.length; i++) {
@@ -4884,6 +4985,45 @@ function __shOpenMark(rect, kind, hingeSide) {
   }
   return '<path d="' + d + '" fill="none" stroke="#8C8578" stroke-width=".15" stroke-dasharray="1.6,1.2"/>';
 }
+/* виден ли фасад с заданной стороны: dir = +1 (спереди, камера на +Z) или -1 (сзади, камера на -Z).
+   По сетке точек внутри фасада ищем панели корпуса, которые выступают к зрителю дальше фасада и закрывают точку;
+   если закрыта половина точек и больше — фасад на этом виде не виден (дверь смотрит в другую сторону) */
+function __shFacVisible(m, P, dir) {
+  var key = dir > 0 ? '_visF' : '_visB';
+  if (m[key] !== undefined) return m[key];
+  var x0 = m.min[0] + 30, x1 = m.max[0] - 30, y0 = m.min[1] + 30, y1 = m.max[1] - 30;
+  if (x1 <= x0 || y1 <= y0) { x0 = m.min[0]; x1 = m.max[0]; y0 = m.min[1]; y1 = m.max[1]; }
+  var NX = 5, NY = 7, occ = 0, tot = 0, i, j, k;
+  for (i = 0; i < NX; i++) {
+    for (j = 0; j < NY; j++) {
+      var x = x0 + (x1 - x0) * (i + 0.5) / NX, y = y0 + (y1 - y0) * (j + 0.5) / NY;
+      tot++;
+      for (k = 0; k < P.length; k++) {
+        var q = P[k];
+        if (q === m) continue;   // фасад ближе к зрителю закрывает фасад за собой (дверь перед ящиком)
+        if (x <= q.min[0] || x >= q.max[0] || y <= q.min[1] || y >= q.max[1]) continue;
+        if (!(dir > 0 ? q.max[2] > m.max[2] + 1 : q.min[2] < m.min[2] - 1)) continue;
+        // габарит панели — это ещё не сама панель (окно под ящик, вырез): проверяем по треугольникам, лежащим ближе фасада
+        var hit = false, t;
+        for (t = 0; t < q.nt && !hit; t++) {
+          if (!q.ok[t]) continue;
+          var i0 = q.T[t * 3] * 3, i1 = q.T[t * 3 + 1] * 3, i2 = q.T[t * 3 + 2] * 3;
+          var zA = q.V[i0 + 2], zB = q.V[i1 + 2], zC = q.V[i2 + 2];
+          if (dir > 0 ? Math.max(zA, zB, zC) <= m.max[2] + 1 : Math.min(zA, zB, zC) >= m.min[2] - 1) continue;
+          var ax = q.V[i0], ay = q.V[i0 + 1], bx = q.V[i1], by = q.V[i1 + 1], cx2 = q.V[i2], cy2 = q.V[i2 + 1];
+          var den = (by - cy2) * (ax - cx2) + (cx2 - bx) * (ay - cy2);
+          if (Math.abs(den) < 1e-6) continue;
+          var l1 = ((by - cy2) * (x - cx2) + (cx2 - bx) * (y - cy2)) / den;
+          var l2 = ((cy2 - ay) * (x - cx2) + (ax - cx2) * (y - cy2)) / den;
+          if (l1 >= 0 && l2 >= 0 && l1 + l2 <= 1) hit = true;
+        }
+        if (hit) { occ++; break; }
+      }
+    }
+  }
+  m[key] = occ / tot < 0.5;
+  return m[key];
+}
 /* по фасадам, петлям (уже найденным) и направляющим (в extras) определяем тип
    открывания каждого фасада: петли рядом -> дверь; направляющие рядом -> ящик */
 function __shOpenings(facadesP, hingesList, extrasList) {
@@ -4896,14 +5036,14 @@ function __shOpenings(facadesP, hingesList, extrasList) {
     });
     if (nearHinges.length) {
       var avgX = nearHinges.reduce(function (s, h) { return s + h.x; }, 0) / nearHinges.length;
-      out.push({ rect: [x0, y0, x1, y1], kind: 'door', hingeSide: avgX < cx ? 'left' : 'right' });
+      out.push({ rect: [x0, y0, x1, y1], kind: 'door', hingeSide: avgX < cx ? 'left' : 'right', m: m });
       return;
     }
     var nearRail = rails.some(function (r) {
       var rcx = (r.min[0] + r.max[0]) / 2, rcy = (r.min[1] + r.max[1]) / 2;
       return rcx >= x0 - 40 && rcx <= x1 + 40 && rcy >= y0 - 60 && rcy <= y1 + 60;
     });
-    if (nearRail) out.push({ rect: [x0, y0, x1, y1], kind: 'drawer' });
+    if (nearRail) out.push({ rect: [x0, y0, x1, y1], kind: 'drawer', m: m });
   });
   return out;
 }
@@ -4941,10 +5081,17 @@ function __shBuild(parts, opt) {
     .filter(function (x) { return x; });
   var showHw = opt.showHw !== false, showHinges = opt.showHinges !== false;
 
-  var P = [], facades = 0, extras = [], hinges = [];
+  var P = [], facades = 0, extras = [], hinges = [], holes35 = [];
   parts.forEach(function (src) {
     var nm = (String(src.name || '') + ' ' + String(src.material || '')).toLowerCase();
     if (src.kind === 'furniture') {
+      // отверстие под чашку петли d35 — деталь БАЗИС «\u041E\u0442\u0432\u0435\u0440\u0441\u0442\u0438\u0435 ... d35x11,5»; центр отверстия = центр чашки
+      if (showHinges && /d35/.test(String(src.name || '').toLowerCase())
+          && String(src.name || '').toLowerCase().indexOf('\u043E\u0442\u0432\u0435\u0440\u0441\u0442\u0438\u0435') === 0) {
+        var hh = __shMesh(src);
+        if (hh) holes35.push({ x: (hh.min[0] + hh.max[0]) / 2, y: (hh.min[1] + hh.max[1]) / 2, z: (hh.min[2] + hh.max[2]) / 2 });
+        return;
+      }
       if (showHinges && hingeWords.some(function (w) { return nm.indexOf(w) >= 0; })) {
         var hm = __shMesh(src);
         if (hm) hinges.push({ x: (hm.min[0] + hm.max[0]) / 2, y: (hm.min[1] + hm.max[1]) / 2, z: (hm.min[2] + hm.max[2]) / 2 });
@@ -4956,7 +5103,7 @@ function __shBuild(parts, opt) {
       var byBlock = !byName && blk && hwBlockWords.some(function (w) { return blk.indexOf(w) >= 0; })
         && nm.indexOf('\u0432\u0435\u0448\u0430\u043B') < 0 && blk.indexOf('\u043E\u0434\u0435\u0436\u0434') < 0;
       if (showHw && (byName || byBlock)) {
-        var em = __shMesh(src);
+        var em = __shMesh(src, true);
         if (em && byBlock && Math.max(em.max[0] - em.min[0], em.max[1] - em.min[1], em.max[2] - em.min[2]) < 10) em = null;
         if (em) { em.facade = false; em.hw = true; em.name = src.name || ''; extras.push(em); }
       }
@@ -4971,6 +5118,20 @@ function __shBuild(parts, opt) {
     P.push(m);
   });
   if (!P.length) return { svg: '', sheets: [], error: 'no-panels' };
+  if (holes35.length) {
+    var facP = P.filter(function (m) { return m.facade; });
+    var holeHinges = holes35.filter(function (h) {
+      return facP.some(function (m) {
+        return h.x >= m.min[0] - 5 && h.x <= m.max[0] + 5 && h.y >= m.min[1] - 5 && h.y <= m.max[1] + 5 &&
+               h.z >= m.min[2] - 30 && h.z <= m.max[2] + 30;
+      });
+    });
+    if (holeHinges.length) {
+      hinges = hinges.filter(function (n) {
+        return !holeHinges.some(function (h) { return Math.abs(h.x - n.x) <= 40 && Math.abs(h.y - n.y) <= 40; });
+      }).concat(holeHinges);
+    }
+  }
 
   var mn = [1e18, 1e18, 1e18], mx = [-1e18, -1e18, -1e18];
   P.forEach(function (m) {
@@ -4999,25 +5160,27 @@ function __shBuild(parts, opt) {
   var Pall = extras.length ? P.concat(extras) : P;
   var noFacAll = extras.length ? noFac.concat(extras) : noFac;
   var onePerSheet = !!opt.onePerSheet;
+  var rightDims = opt.rightDims !== false, RX = 16;
   var finalDen = 1, finalTpl = 1;
 
   /* ----- лист 1 (или 1..4, если каждый вид на своём листе) ----- */
   var out = '';
   function ortho(id, cell, items, title, sLocal, mgLocal, denLocal) {
-    var vw = VW[id === 'nofac' ? 'front' : id];
+    var vw = VW[id === 'nofac' ? 'front' : id === 'bnofac' ? 'back' : id];
+    var isNoFac = id === 'nofac' || id === 'bnofac';
     var box = __shProjBox(mn, mx, vw);
     var ox = cell.x + mgLocal.L, oy = cell.y + mgLocal.tH + mgLocal.T;
     var map = __shMapper(vw, box, ox, oy, sLocal);
     var r = __shCaption(cell, title, __shScaleLabel(denLocal));
     r += __shParts(items, vw, map, false);
     // на виде без фасадов размеры привязаны к корпусу, на остальных — ко всему изделию
-    var ext = id === 'nofac' ? [cmn, cmx] : [mn, mx];
+    var ext = isNoFac ? [cmn, cmx] : [mn, mx];
     var eb = __shProjBox(ext[0], ext[1], vw);
     var xL = ox + (eb[0] - box[0]) * sLocal, xR = ox + (eb[2] - box[0]) * sLocal;
     var yT = oy + (box[3] - eb[3]) * sLocal, yB = oy + (box[3] - eb[1]) * sLocal;
     var hAx, vAx;
-    if (id === 'front' || id === 'nofac') { hAx = 0; vAx = 1; }
-    else if (id === 'left') { hAx = 2; vAx = 1; }
+    if (id === 'front' || id === 'nofac' || id === 'back' || id === 'bnofac') { hAx = 0; vAx = 1; }
+    else if (id === 'left' || id === 'right') { hAx = 2; vAx = 1; }
     else { hAx = 0; vAx = 2; }
     var hv = ext[1][hAx] - ext[0][hAx], vv = ext[1][vAx] - ext[0][vAx];
     function hpt(b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], yB]; }
@@ -5025,11 +5188,18 @@ function __shBuild(parts, opt) {
     var hChain = [], vChain = [], vChainList = null, hMin = 2.5;
     if (id === 'front') { hChain = st.chF; hMin = 10; }
     else if (id === 'nofac') { hChain = st.chXc; vChainList = st.chYfList; }
-    else if (id === 'left') { hChain = st.chZ; vChain = st.chYs; }
+    else if (id === 'back' || id === 'bnofac') { hChain = st.chXc; }
+    else if (id === 'left' || id === 'right') { hChain = st.chZ; vChain = st.chYs; }
     else { hChain = st.chX; vChain = st.chZ; }
     r += __shChain(hChain, hpt, [0, 7], hMin);
     if (vChainList) { for (var vi = 0; vi < vChainList.length; vi++) r += __shChain(vChainList[vi], vpt, [-7, 0], 2.5); }
     else r += __shChain(vChain, vpt, [-7, 0], 2.5);
+    if (rightDims && (id === 'front' || id === 'nofac' || id === 'back' || id === 'bnofac')) {
+      var rDir = id === 'front' ? 1 : id === 'back' ? -1 : 0;
+      var rSegs = __shRightLevels(items, st, ext[0][1], ext[1][1], (id === 'front' || id === 'nofac') ? 1 : -1, cmn, cmx,
+        rDir ? function (m) { return __shFacVisible(m, P, rDir); } : null);
+      r += __shChain(rSegs, function (b) { var q = [0, 0, 0]; q[1] = b; return [xR, map(q)[1]]; }, [7, 0], 2.5, [4, 7.4, 10.8]);
+    }
     r += __shDim([xL, yB], [xR, yB], [0, 16], String(Math.round(hv)));
     r += __shDim([xL, yB], [xL, yT], [-16, 0], String(Math.round(vv)));
     if (id === 'nofac' && opt.inner !== false) {
@@ -5044,15 +5214,31 @@ function __shBuild(parts, opt) {
         }
       }
     }
-    if (id === 'front' && hinges.length) {
-      for (i = 0; i < hinges.length; i++) r += __shHingeMark(map([hinges[i].x, hinges[i].y, 0]), Math.max(0.5, 17.5 * sLocal));
+    // метки петель и открывания — на видах спереди и сзади, и только у фасадов, которые на этом виде видны
+    var mdir = id === 'front' ? 1 : id === 'back' ? -1 : 0;
+    if (mdir && hinges.length) {
+      var facAll = P.filter(function (m) { return m.facade; });
+      var inFac = function (h, m) { return h.x >= m.min[0] - 30 && h.x <= m.max[0] + 30 && h.y >= m.min[1] - 20 && h.y <= m.max[1] + 20; };
+      for (i = 0; i < hinges.length; i++) {
+        var hh = hinges[i];
+        var inVis = facAll.some(function (m) { return inFac(hh, m) && __shFacVisible(m, P, mdir); });
+        var inHid = facAll.some(function (m) { return inFac(hh, m) && !__shFacVisible(m, P, mdir); });
+        // спереди: прячем только петли скрытых фасадов (петли корпуса вне фасадов остаются как раньше); сзади — только у видимых фасадов
+        if (mdir > 0 ? (inHid && !inVis) : !inVis) continue;
+        r += __shHingeMark(map([hh.x, hh.y, 0]), Math.max(0.5, 17.5 * sLocal));
+      }
     }
-    if (id === 'front' && openings.length) {
+    if (mdir && openings.length) {
       for (i = 0; i < openings.length; i++) {
-        var op = openings[i], p0 = map([op.rect[0], op.rect[1], 0]), p1 = map([op.rect[2], op.rect[3], 0]);
+        var op = openings[i];
+        if (op.m && !__shFacVisible(op.m, P, mdir)) continue;
+        var p0 = map([op.rect[0], op.rect[1], 0]), p1 = map([op.rect[2], op.rect[3], 0]);
         var oxa = Math.min(p0[0], p1[0]), oxb = Math.max(p0[0], p1[0]);
         var oya = Math.min(p0[1], p1[1]), oyb = Math.max(p0[1], p1[1]);
-        r += __shOpenMark([oxa, oya, oxb, oyb], op.kind, op.hingeSide);
+        // на виде сзади лево и право меняются местами
+        var hs = op.hingeSide;
+        if (mdir < 0 && hs) hs = hs === 'left' ? 'right' : 'left';
+        r += __shOpenMark([oxa, oya, oxb, oyb], op.kind, hs);
       }
     }
     return r;
@@ -5067,9 +5253,11 @@ function __shBuild(parts, opt) {
     nofac: { items: noFacAll, title: nfTitle },
     left: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u043B\u0435\u0432\u0430' },
     right: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u043F\u0440\u0430\u0432\u0430' },
+    back: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u0437\u0430\u0434\u0438' },
+    bnofac: { items: noFacAll, title: facades ? '\u0412\u0438\u0434 \u0441\u0437\u0430\u0434\u0438 \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432' : '\u0412\u0438\u0434 \u0441\u0437\u0430\u0434\u0438, \u0440\u0430\u0437\u043C\u0435\u0440\u044B \u0432 \u0441\u0432\u0435\u0442\u0443' },
     top: { items: Pall, title: '\u0412\u0438\u0434 \u0441\u0432\u0435\u0440\u0445\u0443' }
   };
-  var viewOrder = ['front', 'nofac', 'left', 'right', 'top'];
+  var viewOrder = ['front', 'nofac', 'back', 'bnofac', 'left', 'right', 'top'];
   var activeViews = viewOrder.filter(function (v) { return enabledViews.indexOf(v) >= 0; });
   function viewNeed(id) {
     if (id === 'top') return [W, D];
@@ -5082,13 +5270,14 @@ function __shBuild(parts, opt) {
   } else if (onePerSheet) {
     for (var vi4 = 0; vi4 < activeViews.length; vi4++) {
       var id4 = activeViews[vi4], vm4 = viewsMeta[id4], need4 = viewNeed(id4);
-      var pl1 = __shPlanOne(need4[0], need4[1]);
+      var chainView = id4 === 'front' || id4 === 'nofac' || id4 === 'back' || id4 === 'bnofac';
+      var pl1 = __shPlanOne(need4[0], need4[1], chainView && rightDims ? RX : 0);
       var out1 = ortho(id4, pl1.cell, vm4.items, vm4.title, pl1.s, pl1.m, pl1.den);
       frontSheets.push(__shFrame(opt, vi4 + 1, activeViews.length + 1, '1:' + String(pl1.den).replace('.', ','), out1));
       if (pl1.den > finalDen) finalDen = pl1.den;
     }
   } else {
-    var plan2 = __shPlan(W, H, D, activeViews), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
+    var plan2 = __shPlan(W, H, D, activeViews, rightDims ? RX : 0), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
     finalDen = plan2.den; finalTpl = plan2.tpl;
     for (var vi5 = 0; vi5 < activeViews.length; vi5++) {
       var id5 = activeViews[vi5], vm5 = viewsMeta[id5];
@@ -5196,6 +5385,7 @@ function __shRender() {
     showHw: document.getElementById('sh-hw').checked,
     showHinges: document.getElementById('sh-hinges').checked,
     showOpen: document.getElementById('sh-open').checked,
+    rightDims: document.getElementById('sh-rdim').checked,
     axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr'],
     views: _e.shViews && _e.shViews.length ? _e.shViews : ['front', 'nofac', 'left', 'top']
   });
@@ -5233,6 +5423,7 @@ function __sheetOpen() {
   document.getElementById('sh-hw').checked = __shStore('hw') !== '0';
   document.getElementById('sh-hinges').checked = __shStore('hinges') !== '0';
   document.getElementById('sh-open').checked = __shStore('open') !== '0';
+  document.getElementById('sh-rdim').checked = __shStore('rdim') !== '0';
   document.getElementById('sheet').classList.add('on');
   __shRender();
 }
@@ -5271,6 +5462,10 @@ function __sheetInit() {
   });
   document.getElementById('sh-open').addEventListener('change', function () {
     __shStore('open', document.getElementById('sh-open').checked ? '1' : '0');
+    __shRender();
+  });
+  document.getElementById('sh-rdim').addEventListener('change', function () {
+    __shStore('rdim', document.getElementById('sh-rdim').checked ? '1' : '0');
     __shRender();
   });
   var angBtns = document.querySelectorAll('.sh-ang'), abi;
@@ -5352,7 +5547,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.41",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.45",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
