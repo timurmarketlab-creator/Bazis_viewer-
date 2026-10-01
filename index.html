@@ -477,6 +477,7 @@
     <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
     <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
     <label class="chk" title="Вертикальная размерная цепочка справа: полки, швы, перекладины, планка пантографа"><input id="sh-rdim" type="checkbox" checked>Размеры справа</label>
+    <label class="chk" title="Левая цепочка по границам всех сплошных деталей вида (панели, стенды, стойки). Надписи и логотипы не учитываются. Заменяет прежнюю левую цепочку"><input id="sh-lvl" type="checkbox">Уровни слева</label>
     <label title="Можно включить несколько — на каждый добавится отдельный лист">Ракурс(ы)
       <div class="sh-angles" id="sh-angles">
         <button type="button" class="sh-ang" data-a="fr" title="Спереди-справа">↙</button>
@@ -4195,35 +4196,193 @@ function __selAll(){for(let p of _e.parts)p.mesh&&!_e.sel.has(p)&&(_e.sel.add(p)
 function __selGroup(g,ad){if(!g.items.length)return;if(!ad)ti(null);let all=g.items.every(p=>_e.sel.has(p));if(ad&&all)for(let p of g.items)_e.sel.delete(p),du(p,!1),p.listRow&&p.listRow.classList.remove("active");else for(let p of g.items)_e.sel.has(p)||(_e.sel.add(p),du(p,!0),p.listRow&&p.listRow.classList.add("active"));_e.anchor=g.items[g.items.length-1];_e.selected=_e.sel.size?[..._e.sel][_e.sel.size-1]:null;__selTag()}
 function __markGroups(){for(let g of _e.groups||[]){if(!g.el)continue;let all=g.items.length>0&&g.items.every(p=>_e.sel.has(p)),some=!all&&g.items.some(p=>_e.sel.has(p));g.el.classList.toggle("active",all),g.el.classList.toggle("part",some)}}
 function xu(n){let e=document.getElementById("list");e.innerHTML="",_e.rows=[],_e.groups=[];let t=n.trim().toLowerCase(),i=0,G=new Map;for(let s of _e.parts){let r=s.data;s.listRow=null;if(r.kind==="env")continue;let o=`${r.pos??""} ${r.name??""} ${r.material??""}`.toLowerCase();if(t&&!o.includes(t))continue;let k=(r.pos!=null?"p"+r.pos:"n"+(r.name||"?"))+"|"+(s.dims||"");G.has(k)||G.set(k,{key:k,pos:r.pos,name:r.name||"\u0411\u0435\u0437 \u0438\u043C\u0435\u043D\u0438",dims:s.dims,items:[],el:null});G.get(k).items.push(s),i++}for(let g of G.values()){if(g.items.length<2){e.appendChild(__row(g.items[0]));continue}let open=t?!0:_e.open.has(g.key),w=document.createElement("div");w.className="grp"+(open?" open":"");let line=document.createElement("div");line.className="grp-line";let tog=document.createElement("button");tog.className="grp-tog",tog.title="\u0420\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C";let head=document.createElement("button");head.className="row grp-head",head.title="\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0432\u0441\u0435 \u0434\u0435\u0442\u0430\u043B\u0438 \u0433\u0440\u0443\u043F\u043F\u044B",head.innerHTML='<span class="row-pos"></span><span class="row-main"><span class="row-name"></span><span class="row-sub"></span></span><span class="grp-cnt"></span>';head.querySelector(".row-pos").textContent=g.pos!=null?g.pos:"\xB7",head.querySelector(".row-name").textContent=g.name,head.querySelector(".row-sub").textContent=g.dims||"",head.querySelector(".grp-cnt").textContent=g.items.length+" \u0448\u0442";let box=document.createElement("div");box.className="grp-items";for(let p of g.items)box.appendChild(__row(p,!0));tog.addEventListener("click",ev=>{ev.stopPropagation();let o=w.classList.toggle("open");o?_e.open.add(g.key):_e.open.delete(g.key)});head.addEventListener("click",ev=>{__selGroup(g,ev.shiftKey||ev.ctrlKey||ev.metaKey||_e.multi)});line.appendChild(tog),line.appendChild(head),w.appendChild(line),w.appendChild(box),e.appendChild(w),g.el=head,_e.groups.push(g)}__markGroups();let c=document.getElementById("list-count");c.textContent=(t?`${i} \u0438\u0437 ${_e.parts.length}`:`${_e.parts.length}`)+(_e.groups.length?` \xB7 \u0433\u0440\u0443\u043F\u043F: ${_e.groups.length}`:"")}
-function __parseOBJ(text,filename){
-var verts=[],objects=[],cur=null,lines=text.split(/\r\n|\r|\n/);
-for(var li=0;li<lines.length;li++){
-  var line=lines[li].trim();
-  if(!line||line[0]==="#")continue;
-  var sp=line.indexOf(" "),tag=sp===-1?line:line.slice(0,sp),rest=sp===-1?"":line.slice(sp+1).trim();
-  if(tag==="v"){var p=rest.split(/\s+/).map(Number);verts.push([p[0],p[1],p[2]]);}
-  else if(tag==="o"||tag==="g"){var nm=rest||null;if(nm||!cur){cur={name:nm||("Object"+(objects.length+1)),faces:[]};objects.push(cur);}}
-  else if(tag==="f"){
-    if(!cur){cur={name:(filename||"Object").replace(/\.obj$/i,""),faces:[]};objects.push(cur);}
-    var toks=rest.split(/\s+/).map(function(tok){var vi=tok.split("/")[0],idx=parseInt(vi,10);if(idx<0)idx=verts.length+idx+1;return idx-1;});
-    for(var k=1;k+1<toks.length;k++)cur.faces.push([toks[0],toks[k],toks[k+1]]);
+/* ---- чтение OBJ (Wavefront) из 3ds Max и других программ ----
+   Помимо чтения вершин и граней:
+   1) многоугольники режутся на треугольники по-настоящему (ear clipping): выпуклые, вогнутые и с отверстиями.
+      3ds Max пишет «рамку с вырезом» одной гранью с мостиком; веером от первой вершины такая грань даёт большие
+      ложные треугольники поверх выреза (диагонали на виде сверху, лишние линии в режиме «линии»);
+   2) вершины склеиваются по позиции (0,001 мм), вырожденные треугольники выбрасываются;
+   3) T-стыки (вершина соседней грани лежит на ребре этой грани) разрешаются делением ребра: иначе общее ребро
+      не совпадает и появляются лишние линии;
+   4) модель переносится к началу координат: в файлах из Макса бывают координаты в сотнях тысяч мм, что портит точность. */
+function __objTriPoly(ids, P) {
+  var poly = [], i, n;
+  for (i = 0; i < ids.length; i++) { if (!poly.length || poly[poly.length - 1] !== ids[i]) poly.push(ids[i]); }
+  while (poly.length > 1 && poly[0] === poly[poly.length - 1]) poly.pop();
+  n = poly.length;
+  if (n < 3) return [];
+  if (n === 3) return [[poly[0], poly[1], poly[2]]];
+  // плоскость проекции по нормали Ньюэлла
+  var nx = 0, ny = 0, nz = 0, a, b;
+  for (i = 0; i < n; i++) {
+    a = P[poly[i]]; b = P[poly[(i + 1) % n]];
+    nx += (a[1] - b[1]) * (a[2] + b[2]); ny += (a[2] - b[2]) * (a[0] + b[0]); nz += (a[0] - b[0]) * (a[1] + b[1]);
   }
+  var area2 = Math.sqrt(nx * nx + ny * ny + nz * nz);   // удвоенная площадь
+  if (area2 < 1e-9) return [];
+  var ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz), drop = ax >= ay && ax >= az ? 0 : (ay >= az ? 1 : 2);
+  var nd = drop === 0 ? nx : (drop === 1 ? ny : nz), flip = nd < 0;
+  function X(id) { var p = P[id]; return drop === 0 ? p[1] : (drop === 1 ? p[2] : p[0]); }
+  function Y(id) { var p = P[id]; return drop === 0 ? p[2] : (drop === 1 ? p[0] : p[1]); }
+  function cross(p, q, r) { return (X(q) - X(p)) * (Y(r) - Y(p)) - (Y(q) - Y(p)) * (X(r) - X(p)); }
+  var eps = 1e-9 * Math.max(1, area2);
+  var base = poly.slice();   // исходный порядок обхода
+  var idx = flip ? poly.slice().reverse() : poly.slice();   // на время резки — против часовой в плоскости проекции
+  // выпуклый четырёхугольник без прямых углов — как раньше, веером из первой вершины
+  if (n === 4) {
+    var cv = true, straight = false, cc;
+    for (i = 0; i < 4; i++) { cc = cross(idx[i], idx[(i + 1) % 4], idx[(i + 2) % 4]); if (cc < -eps) cv = false; if (Math.abs(cc) <= eps) straight = true; }
+    if (cv && !straight) return [[base[0], base[1], base[2]], [base[0], base[2], base[3]]];
+  }
+  function samePos(p, q) { return p === q || (Math.abs(X(p) - X(q)) < 1e-7 && Math.abs(Y(p) - Y(q)) < 1e-7); }
+  function sgn(p, q, r) { return (X(p) - X(r)) * (Y(q) - Y(r)) - (X(q) - X(r)) * (Y(p) - Y(r)); }
+  function inTri(p, a1, b1, c1, strict) {
+    var d1 = sgn(p, a1, b1), d2 = sgn(p, b1, c1), d3 = sgn(p, c1, a1);
+    return strict ? (d1 > eps && d2 > eps && d3 > eps) : (d1 >= -eps && d2 >= -eps && d3 >= -eps);
+  }
+  var out = [], m = idx.length, guard = 0, pass, found, zero, j;
+  while (m > 3 && guard++ < 20000) {
+    found = -1; zero = false;
+    for (pass = 0; pass < 2 && found < 0; pass++) {
+      for (i = 0; i < m; i++) {
+        var pa = idx[(i + m - 1) % m], pb = idx[i], pc = idx[(i + 1) % m];
+        var cr = cross(pa, pb, pc);
+        if (Math.abs(cr) <= eps) { found = i; zero = true; break; }   // вершина на прямой: убираем без треугольника
+        if (cr < 0) continue;
+        var good = true;
+        for (j = 0; j < m; j++) {
+          var d = idx[j];
+          if (d === pa || d === pb || d === pc || samePos(d, pa) || samePos(d, pb) || samePos(d, pc)) continue;
+          if (inTri(d, pa, pb, pc, pass === 0)) { good = false; break; }
+        }
+        if (good) { found = i; break; }
+      }
+    }
+    if (found < 0) break;
+    if (!zero) out.push([idx[(found + m - 1) % m], idx[found], idx[(found + 1) % m]]);
+    idx.splice(found, 1); m--;
+  }
+  if (m === 3 && Math.abs(cross(idx[0], idx[1], idx[2])) > eps) out.push([idx[0], idx[1], idx[2]]);
+  // контроль: площадь треугольников совпадает с площадью многоугольника, иначе запасной вариант — веер
+  var sum = 0;
+  out.forEach(function (t) { sum += Math.abs(cross(t[0], t[1], t[2])); });
+  if (m > 3 || Math.abs(sum - area2) > 1e-3 * area2 + 1e-9) {
+    out = [];
+    for (i = 1; i + 1 < base.length; i++) out.push([base[0], base[i], base[i + 1]]);
+    return out;
+  }
+  return flip ? out.map(function (t) { return [t[0], t[2], t[1]]; }) : out;   // вернуть исходное направление обхода
 }
-if(!objects.length)return null;
-var parts=[],posN=1;
-for(var oi=0;oi<objects.length;oi++){
-  var obj=objects[oi];if(!obj.faces.length)continue;
-  var map=new Map(),positions=[],indices=[];
-  for(var fi=0;fi<obj.faces.length;fi++){var f=obj.faces[fi];
-    for(var vk=0;vk<3;vk++){var vi2=f[vk];
-      if(!map.has(vi2)){map.set(vi2,positions.length/3);var v=verts[vi2];
-        if(!v)throw new Error("в файле ссылка на несуществующую вершину (индекс "+(vi2+1)+")");
-        positions.push(v[0],v[1],v[2]);}
-      indices.push(map.get(vi2));}}
-  parts.push({name:obj.name,pos:posN++,kind:"panel",mesh:{positions:positions,indices:indices}});
+/* T-стыки: вершина, лежащая на ребре чужого треугольника, делит это ребро */
+function __objSplitT(P, tris, tol) {
+  var mn = [1e18, 1e18, 1e18], mx = [-1e18, -1e18, -1e18], i, k;
+  P.forEach(function (p) { for (k = 0; k < 3; k++) { if (p[k] < mn[k]) mn[k] = p[k]; if (p[k] > mx[k]) mx[k] = p[k]; } });
+  var cell = Math.max(1e-6, Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) / 40);
+  var grid = new Map();
+  function cid(x, y, z) { return Math.floor((x - mn[0]) / cell) + ',' + Math.floor((y - mn[1]) / cell) + ',' + Math.floor((z - mn[2]) / cell); }
+  var used = new Set();
+  tris.forEach(function (t) { used.add(t[0]); used.add(t[1]); used.add(t[2]); });
+  used.forEach(function (v) { var p = P[v], key = cid(p[0], p[1], p[2]); if (!grid.has(key)) grid.set(key, []); grid.get(key).push(v); });
+  function onEdge(a, b) {
+    var pa = P[a], pb = P[b], dx = pb[0] - pa[0], dy = pb[1] - pa[1], dz = pb[2] - pa[2], L2 = dx * dx + dy * dy + dz * dz;
+    if (L2 < 1e-12) return [];
+    var lo = [Math.min(pa[0], pb[0]) - tol, Math.min(pa[1], pb[1]) - tol, Math.min(pa[2], pb[2]) - tol];
+    var hi = [Math.max(pa[0], pb[0]) + tol, Math.max(pa[1], pb[1]) + tol, Math.max(pa[2], pb[2]) + tol];
+    var res = [], x0 = Math.floor((lo[0] - mn[0]) / cell), x1 = Math.floor((hi[0] - mn[0]) / cell);
+    var y0 = Math.floor((lo[1] - mn[1]) / cell), y1 = Math.floor((hi[1] - mn[1]) / cell);
+    var z0 = Math.floor((lo[2] - mn[2]) / cell), z1 = Math.floor((hi[2] - mn[2]) / cell), x, y, z;
+    for (x = x0; x <= x1; x++) for (y = y0; y <= y1; y++) for (z = z0; z <= z1; z++) {
+      var list = grid.get(x + ',' + y + ',' + z);
+      if (!list) continue;
+      list.forEach(function (v) {
+        if (v === a || v === b) return;
+        var p = P[v], t = ((p[0] - pa[0]) * dx + (p[1] - pa[1]) * dy + (p[2] - pa[2]) * dz) / L2;
+        if (t <= 1e-6 || t >= 1 - 1e-6) return;
+        var qx = pa[0] + t * dx - p[0], qy = pa[1] + t * dy - p[1], qz = pa[2] + t * dz - p[2];
+        if (qx * qx + qy * qy + qz * qz <= tol * tol) res.push([t, v]);
+      });
+    }
+    res.sort(function (u, w) { return u[0] - w[0]; });
+    return res.map(function (r) { return r[1]; });
+  }
+  var out = [], stack = tris.slice(), guard = 0;
+  while (stack.length && guard++ < 2000000) {
+    var t = stack.pop(), split = false;
+    for (i = 0; i < 3 && !split; i++) {
+      var a = t[i], b = t[(i + 1) % 3], c = t[(i + 2) % 3], on = onEdge(a, b);
+      if (on.length) {
+        var chain = [a].concat(on, [b]);
+        for (k = 0; k + 1 < chain.length; k++) stack.push([chain[k], chain[k + 1], c]);
+        split = true;
+      }
+    }
+    if (!split) out.push(t);
+  }
+  return out;
 }
-if(!parts.length)return null;
-return{format:"bazis-parts",version:1,units:"mm",article:{name:(filename||"\u041C\u043E\u0434\u0435\u043B\u044C").replace(/\.obj$/i,"")},parts:parts};
+function __parseOBJ(text, filename) {
+  var verts = [], objects = [], cur = null, lines = text.split(/\r\n|\r|\n/);
+  for (var li = 0; li < lines.length; li++) {
+    var line = lines[li].trim();
+    if (!line || line[0] === "#") continue;
+    var sp = line.indexOf(" "), tag = sp === -1 ? line : line.slice(0, sp), rest = sp === -1 ? "" : line.slice(sp + 1).trim();
+    if (tag === "v") { var p = rest.split(/\s+/).map(Number); verts.push([p[0], p[1], p[2]]); }
+    else if (tag === "o" || tag === "g") { var nm = rest || null; if (nm || !cur) { cur = { name: nm || ("Object" + (objects.length + 1)), polys: [] }; objects.push(cur); } }
+    else if (tag === "f") {
+      if (!cur) { cur = { name: (filename || "Object").replace(/\.obj$/i, ""), polys: [] }; objects.push(cur); }
+      var toks = rest.split(/\s+/).map(function (tok) { var vi = tok.split("/")[0], idx = parseInt(vi, 10); if (idx < 0) idx = verts.length + idx + 1; return idx - 1; });
+      cur.polys.push(toks);
+    }
+  }
+  if (!objects.length) return null;
+  // перенос к началу координат: по x и z в центр, по y — низ на 0
+  var mn = [1e18, 1e18, 1e18], mx = [-1e18, -1e18, -1e18], any = false;
+  objects.forEach(function (o) { o.polys.forEach(function (pl) { pl.forEach(function (vi) {
+    var v = verts[vi]; if (!v) return; any = true;
+    for (var k = 0; k < 3; k++) { if (v[k] < mn[k]) mn[k] = v[k]; if (v[k] > mx[k]) mx[k] = v[k]; }
+  }); }); });
+  var sh = any ? [(mn[0] + mx[0]) / 2, mn[1], (mn[2] + mx[2]) / 2] : [0, 0, 0];
+  var span = any ? Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) : 1;
+  var tol = Math.max(0.005, span * 2e-6);   // допуск совпадения точек, мм
+  var parts = [], posN = 1;
+  for (var oi = 0; oi < objects.length; oi++) {
+    var obj = objects[oi]; if (!obj.polys.length) continue;
+    // склейка вершин по позиции
+    var wmap = new Map(), P = [], remap = {};
+    function wid(vi) {
+      if (remap[vi] !== undefined) return remap[vi];
+      var v = verts[vi];
+      if (!v) throw new Error("в файле ссылка на несуществующую вершину (индекс " + (vi + 1) + ")");
+      var x = v[0] - sh[0], y = v[1] - sh[1], z = v[2] - sh[2];
+      var key = Math.round(x * 1000) + "," + Math.round(y * 1000) + "," + Math.round(z * 1000);
+      var id = wmap.get(key);
+      if (id === undefined) { id = P.length; P.push([x, y, z]); wmap.set(key, id); }
+      remap[vi] = id; return id;
+    }
+    var tris = [];
+    obj.polys.forEach(function (pl) {
+      var ids = pl.map(wid);
+      __objTriPoly(ids, P).forEach(function (t) { if (t[0] !== t[1] && t[1] !== t[2] && t[0] !== t[2]) tris.push(t); });
+    });
+    tris = __objSplitT(P, tris, tol);
+    // выбросить вырожденные
+    tris = tris.filter(function (t) {
+      var a = P[t[0]], b = P[t[1]], c = P[t[2]];
+      var ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      var cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      return Math.sqrt(cx * cx + cy * cy + cz * cz) > 1e-6;
+    });
+    if (!tris.length) continue;
+    // в итоговую геометрию — только используемые вершины
+    var newId = new Map(), positions = [], indices = [];
+    tris.forEach(function (t) { t.forEach(function (v) {
+      if (!newId.has(v)) { newId.set(v, positions.length / 3); positions.push(P[v][0], P[v][1], P[v][2]); }
+      indices.push(newId.get(v));
+    }); });
+    parts.push({ name: obj.name, pos: posN++, kind: "panel", mesh: { positions: positions, indices: indices } });
+  }
+  if (!parts.length) return null;
+  return { format: "bazis-parts", version: 1, units: "mm", article: { name: (filename || "\u041C\u043E\u0434\u0435\u043B\u044C").replace(/\.obj$/i, "") }, parts: parts };
 }
 function vu(n){let e=new FileReader;e.onload=()=>{try{let t=e.result,i=new Uint8Array(t,0,Math.min(4,t.byteLength));if(i[0]===66&&i[1]===90&&i[2]===56&&i[3]===53){let s=uu(t,n.name);s.warnings&&s.warnings.length&&console.warn("b3d warnings:",s.warnings),ko(s)}else if(/\.obj$/i.test(n.name)){let s=__parseOBJ(new TextDecoder("utf-8").decode(t),n.name);if(!s)throw new Error("\u0432 \u0444\u0430\u0439\u043B\u0435 .obj \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043D\u0438 \u043E\u0434\u043D\u043E\u0439 \u0433\u0440\u0430\u043D\u0438 (\u0441\u0442\u0440\u043E\u043A\u0438 \u00ABf \u2026\u00BB)");ko(s)}else ko(JSON.parse(new TextDecoder("utf-8").decode(t)))}catch(t){console.error(t),alert("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0439\u043B: "+t.message)}},e.readAsArrayBuffer(n)}document.getElementById("file-input").addEventListener("change",n=>{__openFiles(n.target.files),n.target.value=""});window.addEventListener("dragover",n=>{n.preventDefault()});window.addEventListener("drop",n=>{n.preventDefault(),__openFiles(n.dataTransfer.files)});document.getElementById("btn-open").addEventListener("click",()=>document.getElementById("file-input").click());document.getElementById("btn-fit").addEventListener("click",Vo);document.getElementById("btn-showall").addEventListener("click",mx);document.getElementById("btn-isolate").addEventListener("click",()=>_u());document.getElementById("btn-hide").addEventListener("click",px);document.getElementById("tag-close").addEventListener("click",()=>ti(null));document.getElementById("btn-links").addEventListener("click",()=>{_e.linksOn=!_e.linksOn,Go()});document.getElementById("explode").addEventListener("input",n=>{let r=parseFloat(n.target.value)||0;r<=2&&(r=0,n.target.value=0);_e.explode=r*r/1e4*(_e.hasExp?1:1.5),__expLabel(r),fx()});var Ho=document.getElementById("search");Ho.addEventListener("input",()=>xu(Ho.value));Ho.addEventListener("keydown",n=>{if(n.key==="Enter"){let e=_e.parts.find(t=>t.listRow);e&&(ti(e),e.mesh&&Ur(new Dt().setFromObject(e.mesh)))}});document.getElementById("btn-panel").addEventListener("click",()=>{document.getElementById("sidebar").classList.toggle("open")});document.getElementById("btn-demo").addEventListener("click",()=>ko(_x()));function gx(n,e,t){let i=[],s=n,r=e,o=t,a=[[0,0,0],[s,0,0],[s,r,0],[0,r,0],[0,0,o],[s,0,o],[s,r,o],[0,r,o]],c=[[0,1,2,3],[5,4,7,6],[4,0,3,7],[1,5,6,2],[3,2,6,7],[4,5,1,0]],l=[],h=[];for(let f of c){let u=l.length/3;for(let d of f)l.push(...a[d]);h.push(u,u+1,u+2,u,u+2,u+3)}return{positions:l,indices:h}}function _x(){let s="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0411\u0435\u043B\u044B\u0439",r="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0414\u0443\u0431",o=(c,l,h,f,u,d,_,x)=>({id:c,pos:String(l),name:h,material:f,thickness:16,coords:"local",matrix:x,mesh:gx(u,d,_),block:"\u0422\u0443\u043C\u0431\u0430 \u0414-1"}),a=(c,l,h)=>[1,0,0,c,0,1,0,l,0,0,1,h,0,0,0,1];return{format:"bazis-parts",version:1,units:"mm",article:{name:"\u0414\u0435\u043C\u043E: \u0442\u0443\u043C\u0431\u0430 \u0414-1",code:null},parts:[o(1,1,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043B\u0435\u0432\u0430\u044F",s,16,720,520,a(0,0,0)),o(2,2,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043F\u0440\u0430\u0432\u0430\u044F",s,16,720,520,a(584,0,0)),o(3,3,"\u0414\u043D\u043E",s,600-2*16,16,520,a(16,60,0)),o(4,4,"\u041A\u0440\u044B\u0448\u043A\u0430",s,600-2*16,16,520,a(16,704,0)),o(5,5,"\u041F\u043E\u043B\u043A\u0430",s,600-2*16,16,500,a(16,380,0)),o(6,6,"\u0417\u0430\u0434\u043D\u044F\u044F \u0441\u0442\u0435\u043D\u043A\u0430",s,600-2*16,628,4,a(16,76,-4)),o(7,7,"\u0424\u0430\u0441\u0430\u0434",r,596,300,16,a(2,402,522))],skipped:[]}}document.getElementById("btn-explode0").addEventListener("click",()=>{document.getElementById("explode").value=0,_e.explode=0,__expLabel(0),fx()});document.getElementById("btn-top").addEventListener("click",()=>{__setView(0,1,.0015),__markView("btn-top")});document.getElementById("btn-front").addEventListener("click",()=>{__setView(0,0,1),__markView("btn-front")});document.getElementById("btn-side").addEventListener("click",()=>{__setView(1,0,0),__markView("btn-side")});document.getElementById("btn-iso").addEventListener("click",()=>{__setView(.75,.6,.9,!0),__markView("btn-iso")});document.getElementById("btn-furn").addEventListener("click",()=>{_e.hideFurn=!_e.hideFurn,__vis()});document.getElementById("btn-rect").addEventListener("click",()=>{_e.rectMode=!_e.rectMode,fs.enabled=!_e.rectMode,document.getElementById("btn-rect").classList.toggle("on",_e.rectMode)});__rectInit();document.getElementById("btn-wire").addEventListener("click",()=>{_e.wire=!_e.wire,__applyWire()});document.getElementById("btn-multi").addEventListener("click",()=>{_e.multi=!_e.multi,document.getElementById("btn-multi").classList.toggle("on",_e.multi)});window.addEventListener("keydown",n=>{if(n.target&&/input|textarea/i.test(n.target.tagName))return;if(!n.key)return;if((n.ctrlKey||n.metaKey)&&n.key.toLowerCase()==="a")n.preventDefault(),__selAll();else if(n.key==="Escape")ti(null)});function __expLabel(r){let e=document.getElementById("explode-label");e&&(e.textContent="Разлёт "+Math.round(r)+"%")}
 function __linkOwners(){let L=_e.linkBase;if(!L)return;let P=[];for(let p of _e.parts){if(!p.mesh)continue;let b=p.mesh.geometry.boundingBox;if(!b)continue;P.push({p:p,b:b,v:(b.max.x-b.min.x)*(b.max.y-b.min.y)*(b.max.z-b.min.z)})}let n=L.length/3,O=new Array(n).fill(null);for(let i=0;i<n;i++){let x=L[i*3],y=L[i*3+1],z=L[i*3+2],best=null,bd=1/0;for(let q of P){let b=q.b,dx=x<b.min.x?b.min.x-x:x>b.max.x?x-b.max.x:0,dy=y<b.min.y?b.min.y-y:y>b.max.y?y-b.max.y:0,dz=z<b.min.z?b.min.z-z:z>b.max.z?z-b.max.z:0,d=dx*dx+dy*dy+dz*dz;(d<bd-1e-6||d<bd+1e-6&&best&&q.v<best.v)&&(bd=d,best=q)}O[i]=best&&bd<=900?best.p:null}_e.linkOwner=O}function __linkMove(){let L=_e.linkBase,A=_e.linkAttr,O=_e.linkOwner;if(!L||!A||!O)return;let ar=A.array;for(let i=0;i<O.length;i++){let p=O[i],ox=0,oy=0,oz=0;p&&p.mesh&&(ox=p.mesh.position.x,oy=p.mesh.position.y,oz=p.mesh.position.z);ar[i*3]=L[i*3]+ox,ar[i*3+1]=L[i*3+1]+oy,ar[i*3+2]=L[i*3+2]+oz}A.needsUpdate=!0,_e.linksObj&&_e.linksObj.geometry.computeBoundingSphere()}
@@ -4830,6 +4989,20 @@ function __shRightLevels(items, st, lo, hi, side, cmn, cmx, visFn) {
   for (i = 0; i + 1 < u.length; i++) segs.push({ a: u[i], b: u[i + 1], t: 'g' });
   return segs;
 }
+/* доля площади габарита (в плоскости осей a, b), занятая деталью: у сплошной панели около 1, у надписей и логотипов — 0,3-0,5.
+   Сумма проекций всех граней делится на 2 (грань спереди и грань сзади закрывают одну и ту же площадь) */
+function __shFill(m, a, b) {
+  var key = '_fill' + a + b;
+  if (m[key] !== undefined) return m[key];
+  var w = m.max[a] - m.min[a], h = m.max[b] - m.min[b], sum = 0, t;
+  for (t = 0; t < m.nt; t++) {
+    if (!m.ok[t]) continue;
+    var i0 = m.T[t * 3] * 3, i1 = m.T[t * 3 + 1] * 3, i2 = m.T[t * 3 + 2] * 3;
+    sum += Math.abs((m.V[i1 + a] - m.V[i0 + a]) * (m.V[i2 + b] - m.V[i0 + b]) - (m.V[i2 + a] - m.V[i0 + a]) * (m.V[i1 + b] - m.V[i0 + b])) / 2;
+  }
+  m[key] = w > 0 && h > 0 ? sum / 2 / (w * h) : 1;
+  return m[key];
+}
 /* границы уровней -> отрезки между соседними уровнями (с краями диапазона) */
 function __shLevelsSegs(lv, lo, hi) {
   lv = lv.concat([lo, hi]).filter(function (v) { return v >= lo - 0.5 && v <= hi + 0.5; })
@@ -5346,7 +5519,7 @@ function __shBuild(parts, opt) {
   var Pall = (extras.length || userExtras.length) ? P.concat(extras, userExtras) : P;
   var noFacAll = (extras.length || userK.length) ? noFac.concat(extras, userK) : noFac;
   var onePerSheet = !!opt.onePerSheet;
-  var rightDims = opt.rightDims !== false, RX = 16;
+  var rightDims = opt.rightDims !== false, RX = 16, levelsLeft = !!opt.levelsLeft;
   var finalDen = 1, finalTpl = 1;
 
   /* ----- лист 1 (или 1..4, если каждый вид на своём листе) ----- */
@@ -5384,6 +5557,18 @@ function __shBuild(parts, opt) {
     if (isSide && hChain.length < 2) hChain = __shTallLevels(items, 2, -1, 0, 0, ext[0][2], ext[1][2]);
     if (isTop && hChain.length < 2) hChain = __shTallLevels(items, 0, -1, 0, 0, ext[0][0], ext[1][0]);
     if (isTop && vChain.length < 2) vChain = __shTallLevels(items, 2, 0, ext[0][0], ext[0][0] + bw(ext[0][0], ext[1][0]), ext[0][2], ext[1][2]);
+    // «Уровни слева»: левая цепочка по границам всех сплошных деталей вида (панелей, стоек, стендов); надписи и логотипы отсеиваются по заполнению контура
+    if (levelsLeft) {
+      var lvl = [];
+      items.forEach(function (m) {
+        if (m.hw && !m.cnt) return;
+        if (m.max[vAx] - m.min[vAx] < 100) return;
+        if (__shFill(m, hAx, vAx) < 0.6) return;
+        lvl.push(m.min[vAx], m.max[vAx]);
+      });
+      var lsegs = __shLevelsSegs(lvl, ext[0][vAx], ext[1][vAx]);
+      if (lsegs.length >= 2) { vChain = lsegs; vChainList = null; }
+    }
     r += __shChain(hChain, hpt, [0, 7], hMin);
     if (vChainList) { for (var vi = 0; vi < vChainList.length; vi++) r += __shChain(vChainList[vi], vpt, [-7, 0], 2.5); }
     else r += __shChain(vChain, vpt, [-7, 0], 2.5);
@@ -5628,6 +5813,7 @@ function __shRender() {
     showHinges: document.getElementById('sh-hinges').checked,
     showOpen: document.getElementById('sh-open').checked,
     rightDims: document.getElementById('sh-rdim').checked,
+    levelsLeft: document.getElementById('sh-lvl').checked,
     axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr'],
     views: _e.shViews && _e.shViews.length ? _e.shViews : ['front', 'nofac', 'left', 'top']
   });
@@ -5666,6 +5852,7 @@ function __sheetOpen() {
   document.getElementById('sh-hinges').checked = __shStore('hinges') !== '0';
   document.getElementById('sh-open').checked = __shStore('open') !== '0';
   document.getElementById('sh-rdim').checked = __shStore('rdim') !== '0';
+  document.getElementById('sh-lvl').checked = __shStore('lvl') === '1';
   document.getElementById('sheet').classList.add('on');
   __shRender();
 }
@@ -5708,6 +5895,10 @@ function __sheetInit() {
   });
   document.getElementById('sh-rdim').addEventListener('change', function () {
     __shStore('rdim', document.getElementById('sh-rdim').checked ? '1' : '0');
+    __shRender();
+  });
+  document.getElementById('sh-lvl').addEventListener('change', function () {
+    __shStore('lvl', document.getElementById('sh-lvl').checked ? '1' : '0');
     __shRender();
   });
   var angBtns = document.querySelectorAll('.sh-ang'), abi;
@@ -5789,7 +5980,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.47",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.49",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
