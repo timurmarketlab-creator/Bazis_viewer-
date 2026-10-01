@@ -4931,6 +4931,11 @@ function __shBuild(parts, opt) {
     : opt.hwWords;
   var hwWords = String(hwWordsRaw).toLowerCase().split(/[,;]+/).map(function (x) { return x.trim(); })
     .filter(function (x) { return x; });
+  // Вложенная фурнитура БАЗИС: у деталей внутри блока (пантограф, штанга с держателями) собственное имя
+  // не говорит, чья это деталь («Рычаг AIR», «труба 15х30»), зато в имени блока слово есть.
+  var hwBlockWordsRaw = opt.hwBlockWords == null ? '\u043F\u0430\u043D\u0442\u043E\u0433\u0440\u0430\u0444,\u0448\u0442\u0430\u043D\u0433' : opt.hwBlockWords;
+  var hwBlockWords = String(hwBlockWordsRaw).toLowerCase().split(/[,;]+/).map(function (x) { return x.trim(); })
+    .filter(function (x) { return x; });
   var hingeWordsRaw = opt.hingeWords == null ? '\u043F\u0435\u0442\u043B' : opt.hingeWords;
   var hingeWords = String(hingeWordsRaw).toLowerCase().split(/[,;]+/).map(function (x) { return x.trim(); })
     .filter(function (x) { return x; });
@@ -4945,8 +4950,14 @@ function __shBuild(parts, opt) {
         if (hm) hinges.push({ x: (hm.min[0] + hm.max[0]) / 2, y: (hm.min[1] + hm.max[1]) / 2, z: (hm.min[2] + hm.max[2]) / 2 });
         return;
       }
-      if (showHw && hwWords.some(function (w) { return nm.indexOf(w) >= 0; })) {
+      var byName = hwWords.some(function (w) { return nm.indexOf(w) >= 0; });
+      var blk = String(src.block || '').toLowerCase();
+      // по блоку: без вешалок с одеждой; заклёпки отсекаются по размеру ниже
+      var byBlock = !byName && blk && hwBlockWords.some(function (w) { return blk.indexOf(w) >= 0; })
+        && nm.indexOf('\u0432\u0435\u0448\u0430\u043B') < 0 && blk.indexOf('\u043E\u0434\u0435\u0436\u0434') < 0;
+      if (showHw && (byName || byBlock)) {
         var em = __shMesh(src);
+        if (em && byBlock && Math.max(em.max[0] - em.min[0], em.max[1] - em.min[1], em.max[2] - em.min[2]) < 10) em = null;
         if (em) { em.facade = false; em.hw = true; em.name = src.name || ''; extras.push(em); }
       }
       return;
@@ -5157,7 +5168,7 @@ function __shInput() {
     if (pt.chMark === 'skip') continue;
     var geo = pt.mesh.geometry, att = geo.getAttribute('position');
     if (!att) continue;
-    var rec = { name: pt.data.name || '', material: pt.data.material || '', kind: pt.data.kind,
+    var rec = { name: pt.data.name || '', material: pt.data.material || '', block: pt.data.block || '', kind: pt.data.kind,
                 pos: att.array, idx: geo.index ? geo.index.array : null };
     if (pt.chMark === 'fac') rec.forceFacade = true;
     else if (pt.chMark === 'corp') rec.forceFacade = false;
@@ -5341,7 +5352,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.40",__VDATE="30.09.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.41",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
