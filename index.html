@@ -147,6 +147,17 @@
     pointer-events:none;z-index:5;display:none;
   }
   #dlabs.on{display:block;}
+  #meas-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:6;overflow:visible;}
+  #meas-svg text{font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;fill:#1d1d1b;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;font-variant-numeric:tabular-nums;}
+  #meas-svg text.sm{font-size:10.5px;font-weight:500;fill:#5c5c58;}
+  #meas-ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:7;}
+  #meas-ui .mbadge{position:absolute;transform:translate(-50%,0);pointer-events:auto;display:flex;gap:6px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px 6px;box-shadow:0 2px 8px rgba(0,0,0,.12);font-size:12px;white-space:nowrap;}
+  #meas-ui .mbadge button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;}
+  #meas-ui .mbadge button:hover{border-color:var(--accent,#B98A4B);}
+  #canvas-host.measuring canvas{cursor:crosshair;}
+  #mtoast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1d1d1b;color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;z-index:90;max-width:80vw;opacity:0;pointer-events:none;transition:opacity .2s;}
+  #mtoast.on{opacity:1;}
   .dlab{
     position:absolute;transform:translate(-50%,-50%);
     background:var(--panel);border:1px solid var(--line);border-radius:6px;
@@ -190,12 +201,22 @@
   }
   #sheet.on{display:flex;}
   #sheet .sh-bar{
-    display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;padding:10px 14px;
+    display:flex;flex-direction:column;gap:8px;padding:10px 14px;
     padding-top:calc(10px + env(safe-area-inset-top));
     padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right));
     background:var(--panel);border-bottom:1px solid var(--line);
   }
+  #sheet .sh-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;}
+  #sheet .sh-groups{align-items:stretch;gap:8px 10px;}
   #sheet .sh-ttl{font-weight:700;font-size:15px;padding-bottom:8px;margin-right:6px;color:#000;}
+  #sheet .sh-grp{display:flex;flex-direction:column;gap:5px;border:1px solid var(--line);border-radius:10px;padding:5px 11px 7px;background:var(--bg);min-width:0;}
+  #sheet .sh-grp .sh-gt{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);}
+  #sheet .sh-grp .sh-gb{display:flex;flex-wrap:wrap;align-items:center;gap:5px 14px;}
+  #sheet .sh-grp label.chk{padding-bottom:0;}
+  #sheet .sh-grp .sh-vlist{display:inline-flex;flex-wrap:wrap;gap:5px 14px;margin-left:0;}
+  #sheet .sh-grp .sh-angl{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink2);letter-spacing:.02em;}
+  #sheet #sh-man{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);}
+  #sheet #sh-man .btn{padding:3px 10px;font-size:12px;}
   #sheet .sh-bar label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--ink2);letter-spacing:.02em;}
   #sheet .sh-bar label.chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding-bottom:9px;}
   #sheet .sh-angles{display:flex;gap:2px;}
@@ -398,6 +419,7 @@
     <button class="btn" id="btn-showall">Показать всё</button>
     <button class="btn" id="btn-env" title="Стены, техника, окружение" style="display:none">Окружение</button>
     <button class="btn" id="btn-dims" title="Габариты изделия">Размеры</button>
+    <button class="btn" id="btn-meas" title="Линейка: нажмите две вершины, чтобы измерить расстояние (Esc — очистить, Backspace — убрать последний замер)">Линейка</button>
     <button class="btn" id="btn-sheet" title="Чертёж A3: виды с размерами">Чертёж</button>
     <button class="btn" id="btn-link" style="display:none">Ссылка для клиента</button>
     <button class="btn primary" id="btn-open">Открыть файл</button>
@@ -425,6 +447,8 @@
       </div>
 
       <div id="dlabs"></div>
+      <svg id="meas-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="meas-ui"></div>
       <button id="ver" title="Нажмите, чтобы загрузить свежую версию"></button>
 
       <div id="tag" class="hidden">
@@ -453,44 +477,68 @@
 </div>
 <div id="sheet">
   <div class="sh-bar">
-    <div class="sh-ttl">Чертёж A3</div>
-    <label>Заказчик<input id="sh-cust" type="text" placeholder="Фамилия И.О." autocomplete="off"></label>
-    <label>Объект<input id="sh-title" type="text" autocomplete="off"></label>
-    <label>Документ №<input id="sh-doc" type="text" style="width:74px;min-width:74px" autocomplete="off"></label>
-    <label>Фасады: слова в названии<input id="sh-words" type="text" style="width:170px" autocomplete="off"></label>
-    <label class="chk"><input id="sh-inner" type="checkbox" checked>Размеры в свету</label>
-    <label class="chk"><input id="sh-onesheet" type="checkbox">По листу на вид</label>
-    <label title="Отключите ненужные — лист соберётся только из отмеченных">Виды
-      <span class="sh-vlist" id="sh-vlist">
-        <label class="chk sh-v"><input type="checkbox" data-v="front" checked>Спереди</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="nofac" checked>Без фасадов</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="back">Сзади</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="bnofac">Сзади без фасадов</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="left" checked>Слева</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="lnofac">Слева без фасадов</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="right">Справа</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="rnofac">Справа без фасадов</label>
-        <label class="chk sh-v"><input type="checkbox" data-v="top" checked>Сверху</label>
-      </span>
-    </label>
-    <label class="chk"><input id="sh-hw" type="checkbox" checked>Фурнитура</label>
-    <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
-    <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
-    <label class="chk" title="Вертикальная размерная цепочка справа: полки, швы, перекладины, планка пантографа"><input id="sh-rdim" type="checkbox" checked>Размеры справа</label>
-    <label class="chk" title="Левая цепочка по границам всех сплошных деталей вида (панели, стенды, стойки). Надписи и логотипы не учитываются. Заменяет прежнюю левую цепочку"><input id="sh-lvl" type="checkbox">Уровни слева</label>
-    <label title="Можно включить несколько — на каждый добавится отдельный лист">Ракурс(ы)
-      <div class="sh-angles" id="sh-angles">
-        <button type="button" class="sh-ang" data-a="fr" title="Спереди-справа">↙</button>
-        <button type="button" class="sh-ang" data-a="fl" title="Спереди-слева">↘</button>
-        <button type="button" class="sh-ang" data-a="br" title="Сзади-справа">↖</button>
-        <button type="button" class="sh-ang" data-a="bl" title="Сзади-слева">↗</button>
+    <div class="sh-row">
+      <div class="sh-ttl">Чертёж A3</div>
+      <label>Заказчик<input id="sh-cust" type="text" placeholder="Фамилия И.О." autocomplete="off"></label>
+      <label>Объект<input id="sh-title" type="text" autocomplete="off"></label>
+      <label>Документ №<input id="sh-doc" type="text" style="width:74px;min-width:74px" autocomplete="off"></label>
+      <label>Фасады: слова в названии<input id="sh-words" type="text" style="width:170px" autocomplete="off"></label>
+      <span class="sh-info" id="sh-info"></span>
+      <button class="btn primary" id="sh-print">Печать / PDF</button>
+      <button class="btn" id="sh-svg1">SVG · лист 1</button>
+      <button class="btn" id="sh-svg2">SVG · лист 2</button>
+      <button class="btn" id="sh-close">Закрыть</button>
+    </div>
+    <div class="sh-row sh-groups">
+      <div class="sh-grp" id="sh-grp-views">
+        <div class="sh-gt">Виды</div>
+        <div class="sh-gb">
+          <label class="chk"><input id="sh-onesheet" type="checkbox">По листу на вид</label>
+          <span class="sh-vlist" id="sh-vlist" title="Отключите ненужные — лист соберётся только из отмеченных">
+            <label class="chk sh-v"><input type="checkbox" data-v="front" checked>Спереди</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="nofac" checked>Без фасадов</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="back">Сзади</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="bnofac">Сзади без фасадов</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="left" checked>Слева</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="lnofac">Слева без фасадов</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="right">Справа</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="rnofac">Справа без фасадов</label>
+            <label class="chk sh-v"><input type="checkbox" data-v="top" checked>Сверху</label>
+          </span>
+          <span class="sh-angl" title="Можно включить несколько — на каждый добавится отдельный лист">Ракурс(ы)
+            <span class="sh-angles" id="sh-angles">
+              <button type="button" class="sh-ang" data-a="fr" title="Спереди-справа">↙</button>
+              <button type="button" class="sh-ang" data-a="fl" title="Спереди-слева">↘</button>
+              <button type="button" class="sh-ang" data-a="br" title="Сзади-справа">↖</button>
+              <button type="button" class="sh-ang" data-a="bl" title="Сзади-слева">↗</button>
+            </span>
+          </span>
+        </div>
       </div>
-    </label>
-    <span class="sh-info" id="sh-info"></span>
-    <button class="btn primary" id="sh-print">Печать / PDF</button>
-    <button class="btn" id="sh-svg1">SVG · лист 1</button>
-    <button class="btn" id="sh-svg2">SVG · лист 2</button>
-    <button class="btn" id="sh-close">Закрыть</button>
+      <div class="sh-grp" id="sh-grp-dims">
+        <div class="sh-gt">Размеры</div>
+        <div class="sh-gb">
+          <label class="chk" title="Размеры между полками и перегородками внутри корпуса (на видах «без фасадов»)"><input id="sh-inner" type="checkbox" checked>Размеры в свету</label>
+          <label class="chk" title="Все углы, вырезы и концы пазов цепочками сверху и справа. Включается, когда на листе не больше 12 панелей: остальные детали скройте во вьювере"><input id="sh-cont" type="checkbox" checked>Размеры контура</label>
+          <label class="chk" title="Вертикальная размерная цепочка справа: полки, швы, перекладины, планка пантографа"><input id="sh-rdim" type="checkbox" checked>Размеры справа</label>
+          <label class="chk" title="Левая размерная цепочка по границам всех сплошных деталей вида (панели, стенды, стойки). Надписи и логотипы не учитываются. Заменяет прежнюю левую цепочку"><input id="sh-lvl" type="checkbox">Размеры слева</label>
+          <span id="sh-man" style="display:none" title="Размеры, поставленные линейкой через «В чертёж»">Ручные: <b id="sh-man-n">0</b>
+            <button type="button" class="btn" id="sh-man-undo" title="Убрать последний ручной размер">Отменить</button>
+            <button type="button" class="btn" id="sh-man-flip" title="Перенести последний размер на другую сторону">Сторона</button>
+            <button type="button" class="btn" id="sh-man-clear" title="Убрать все ручные размеры">Очистить</button>
+          </span>
+        </div>
+      </div>
+      <div class="sh-grp" id="sh-grp-vis">
+        <div class="sh-gt">Видимость</div>
+        <div class="sh-gb">
+          <label class="chk"><input id="sh-hw" type="checkbox" checked>Фурнитура</label>
+          <label class="chk"><input id="sh-hinges" type="checkbox" checked>Петли</label>
+          <label class="chk"><input id="sh-open" type="checkbox" checked>Открывание</label>
+          <label class="chk" title="Чертёж собирается только из того, что видно во вьювере: изолируйте или скройте лишние детали (кнопки «Изолировать», «Скрыть»)"><input id="sh-vis" type="checkbox">Только видимые</label>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="sh-wrap" id="sh-wrap"></div>
 </div>
@@ -4192,7 +4240,7 @@ function __selRange(n){let a=_e.rows.indexOf(_e.anchor),b=_e.rows.indexOf(n);if(
 function __selTag(){__markGroups();let e=document.getElementById("tag"),k=_e.sel.size,L=document.getElementById("tag-pos-label");if(!k){e.classList.add("hidden"),_e.isolated&&_u(!1);return}let P=document.getElementById("tag-pos"),N=document.getElementById("tag-name"),Dm=document.getElementById("tag-dims"),Mt=document.getElementById("tag-mat"),Bl=document.getElementById("tag-block"),Th=document.getElementById("tag-thick");if(k>1){L.textContent="Выбрано деталей",P.textContent=String(k);let z=[..._e.sel].map(p=>p.data.pos!=null?"\u2116"+p.data.pos:p.data.name||"?").join(", ");N.textContent=z.length>110?z.slice(0,110)+"\u2026":z,Dm.textContent="",Mt.textContent="",Bl.textContent="",Th.textContent=""}else{let p=_e.selected||[..._e.sel][0],t=p.data;L.textContent=_e.autoPos?"Позиция (нумерация вьювера)":"Деталь \u2116",P.textContent=t.pos!=null?String(t.pos):"\u2014",N.textContent=t.name||"Без имени",Dm.textContent=p.dims||"",Mt.textContent=t.material||"",Bl.textContent=t.block||"",Th.textContent=t.thickness?"толщина "+t.thickness+" мм":""}__tagMarkSync(),e.classList.remove("hidden")}
 function __applyWire(){for(let p of _e.parts){if(!p.mesh)continue;let m=p.mesh.material;_e.wire?(m.transparent=!0,m.opacity=_e.sel.has(p)?.6:.08,m.depthWrite=!1):(m.transparent=!1,m.opacity=1,m.depthWrite=!0),m.needsUpdate=!0}_e.edgeMat&&(_e.edgeMat.opacity=_e.wire?.95:.35,_e.edgeMat.color.set(_e.wire?2829099:hx),_e.edgeMat.needsUpdate=!0);let b=document.getElementById("btn-wire");b&&b.classList.toggle("on",_e.wire)}
 
-function __selAll(){for(let p of _e.parts)p.mesh&&!_e.sel.has(p)&&(_e.sel.add(p),du(p,!0),p.listRow&&p.listRow.classList.add("active"));_e.selected=[..._e.sel][_e.sel.size-1]||null,__selTag()}function __vis(){for(let p of _e.parts){if(!p.mesh)continue;let v=!p.hidden;_e.hideFurn&&p.data.kind==="furniture"&&(v=!1),_e.hideEnv&&p.data.kind==="env"&&(v=!1);_e.isolated&&!_e.sel.has(p)&&(v=!1);p.mesh.visible=v}let a=document.getElementById("btn-isolate");a&&a.classList.toggle("on",_e.isolated);let f=document.getElementById("btn-furn");f&&f.classList.toggle("on",_e.hideFurn);let n2=document.getElementById("btn-env");n2&&(n2.classList.toggle("on",_e.hideEnv),n2.style.display=_e.parts.some(p=>p.data.kind==="env")?"":"none")}function _u(n){let e=n!==void 0?n:!_e.isolated;_e.isolated=e&&_e.sel.size>0;__vis()}function px(){if(!_e.sel.size)return;for(let p of _e.sel)p.hidden=!0;ti(null),__vis()}function mx(){for(let n of _e.parts)n.hidden=!1;_e.isolated=!1,_e.hideFurn=!1,_e.hideEnv=!1,__vis()}var fu=new xr,Bo=new Re,ds=null;Qt.domElement.addEventListener("pointerdown",n=>{ds=[n.clientX,n.clientY]});Qt.domElement.addEventListener("pointerup",n=>{if(!ds)return;let e=Math.hypot(n.clientX-ds[0],n.clientY-ds[1]);if(ds=null,e>6)return;let t=Qt.domElement.getBoundingClientRect();Bo.x=(n.clientX-t.left)/t.width*2-1,Bo.y=-((n.clientY-t.top)/t.height)*2+1,fu.setFromCamera(Bo,Ht);let i=[..._e.byMesh.keys()].filter(r=>r.visible),s=fu.intersectObjects(i,!1),h=s.length?_e.byMesh.get(s[0].object):null,ad=n.shiftKey||n.ctrlKey||n.metaKey||_e.multi;if(!(ad&&!h))ti(h,ad)});Qt.domElement.addEventListener("dblclick",()=>{_e.selected&&_e.selected.mesh?Ur(new Dt().setFromObject(_e.selected.mesh)):Vo()});function __tagMarkSync(){var box=document.getElementById("tag-marks");if(!box)return;var vals=[..._e.sel].map(function(p){return p.chMark||""}),same=vals.length>0&&vals.every(function(v){return v===vals[0]}),bs=box.querySelectorAll(".tmk");for(var i=0;i<bs.length;i++)bs[i].classList.toggle("on",same&&bs[i].getAttribute("data-m")===vals[0]);}function __setMarkSel(v){_e.sel.forEach(function(p){p.chMark=v||void 0;var mk=p.listRow&&p.listRow.querySelector(".row-mark");if(mk){mk.textContent=__chMarkLabel(p.chMark);mk.className="row-mark"+(p.chMark?" mk-"+p.chMark:"");mk.title=__chMarkTitle(p.chMark);}});__tagMarkSync();}(function(){var box=document.getElementById("tag-marks");if(box)box.addEventListener("click",function(ev){var b=ev.target&&ev.target.closest?ev.target.closest(".tmk"):null;if(!b)return;ev.stopPropagation();__setMarkSel(b.getAttribute("data-m")||"");});})();function __chMarkLabel(v){return v==="skip"?"\u2013":v==="fac"?"\u0424":v==="corp"?"\u041A":"";}function __chMarkTitle(v){return v==="skip"?"\u041D\u0435 \u0432 \u0447\u0435\u0440\u0442\u0451\u0436\u0435 (\u043A\u043B\u0438\u043A \u0432\u0435\u0440\u043D\u0451\u0442 \u043A \u0430\u0432\u0442\u043E)":v==="fac"?"\u0421\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0441\u0430\u0434\u043E\u043C":v==="corp"?"\u0421\u0447\u0438\u0442\u0430\u0442\u044C \u043A\u043E\u0440\u043F\u0443\u0441\u043E\u043C":"\u0410\u0432\u0442\u043E \u2014 \u043A\u043B\u0438\u043A: \u0438\u0441\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0438\u0437 \u0447\u0435\u0440\u0442\u0451\u0436\u0430";}function __row(s,sub){let r=s.data,a=document.createElement("button");a.className="row"+(sub?" sub":"")+(s.mesh?"":" nomesh");a.innerHTML='<span class="row-pos"></span><span class="row-main"><span class="row-name"></span><span class="row-sub"></span></span><span class="row-mark" title=""></span>';a.querySelector(".row-pos").textContent=r.pos!=null?r.pos:"\xB7";a.querySelector(".row-name").textContent=r.name||"\u0411\u0435\u0437 \u0438\u043C\u0435\u043D\u0438";a.querySelector(".row-sub").textContent=s.dims||(s.mesh?"":"\u043D\u0435\u0442 \u0433\u0435\u043E\u043C\u0435\u0442\u0440\u0438\u0438");let mk=a.querySelector(".row-mark");function syncMark(){mk.textContent=__chMarkLabel(s.chMark);mk.className="row-mark"+(s.chMark?" mk-"+s.chMark:"");mk.title=__chMarkTitle(s.chMark);}syncMark();mk.addEventListener("click",ev=>{ev.stopPropagation();let seq=[void 0,"skip","fac","corp"],ix=seq.indexOf(s.chMark);s.chMark=seq[(ix+1)%seq.length];syncMark();});a.addEventListener("click",ev=>{let ad=ev.ctrlKey||ev.metaKey||_e.multi;if(ev.shiftKey&&_e.anchor&&_e.anchor!==s)__selRange(s);else ti(s,ad);!ad&&!ev.shiftKey&&s.mesh&&Ur(new Dt().setFromObject(s.mesh))});s.listRow=a;_e.sel.has(s)&&a.classList.add("active");_e.rows.push(s);return a}
+function __selAll(){for(let p of _e.parts)p.mesh&&!_e.sel.has(p)&&(_e.sel.add(p),du(p,!0),p.listRow&&p.listRow.classList.add("active"));_e.selected=[..._e.sel][_e.sel.size-1]||null,__selTag()}function __vis(){for(let p of _e.parts){if(!p.mesh)continue;let v=!p.hidden;_e.hideFurn&&p.data.kind==="furniture"&&(v=!1),_e.hideEnv&&p.data.kind==="env"&&(v=!1);_e.isolated&&!_e.sel.has(p)&&(v=!1);p.mesh.visible=v}let a=document.getElementById("btn-isolate");a&&a.classList.toggle("on",_e.isolated);let f=document.getElementById("btn-furn");f&&f.classList.toggle("on",_e.hideFurn);let n2=document.getElementById("btn-env");n2&&(n2.classList.toggle("on",_e.hideEnv),n2.style.display=_e.parts.some(p=>p.data.kind==="env")?"":"none")}function _u(n){let e=n!==void 0?n:!_e.isolated;_e.isolated=e&&_e.sel.size>0;__vis()}function px(){if(!_e.sel.size)return;for(let p of _e.sel)p.hidden=!0;ti(null),__vis()}function mx(){for(let n of _e.parts)n.hidden=!1;_e.isolated=!1,_e.hideFurn=!1,_e.hideEnv=!1,__vis()}var fu=new xr,Bo=new Re,ds=null;Qt.domElement.addEventListener("pointerdown",n=>{ds=[n.clientX,n.clientY]});Qt.domElement.addEventListener("pointerup",n=>{if(!ds||_e.measOn)return;let e=Math.hypot(n.clientX-ds[0],n.clientY-ds[1]);if(ds=null,e>6)return;let t=Qt.domElement.getBoundingClientRect();Bo.x=(n.clientX-t.left)/t.width*2-1,Bo.y=-((n.clientY-t.top)/t.height)*2+1,fu.setFromCamera(Bo,Ht);let i=[..._e.byMesh.keys()].filter(r=>r.visible),s=fu.intersectObjects(i,!1),h=s.length?_e.byMesh.get(s[0].object):null,ad=n.shiftKey||n.ctrlKey||n.metaKey||_e.multi;if(!(ad&&!h))ti(h,ad)});Qt.domElement.addEventListener("dblclick",()=>{_e.selected&&_e.selected.mesh?Ur(new Dt().setFromObject(_e.selected.mesh)):Vo()});function __tagMarkSync(){var box=document.getElementById("tag-marks");if(!box)return;var vals=[..._e.sel].map(function(p){return p.chMark||""}),same=vals.length>0&&vals.every(function(v){return v===vals[0]}),bs=box.querySelectorAll(".tmk");for(var i=0;i<bs.length;i++)bs[i].classList.toggle("on",same&&bs[i].getAttribute("data-m")===vals[0]);}function __setMarkSel(v){_e.sel.forEach(function(p){p.chMark=v||void 0;var mk=p.listRow&&p.listRow.querySelector(".row-mark");if(mk){mk.textContent=__chMarkLabel(p.chMark);mk.className="row-mark"+(p.chMark?" mk-"+p.chMark:"");mk.title=__chMarkTitle(p.chMark);}});__tagMarkSync();}(function(){var box=document.getElementById("tag-marks");if(box)box.addEventListener("click",function(ev){var b=ev.target&&ev.target.closest?ev.target.closest(".tmk"):null;if(!b)return;ev.stopPropagation();__setMarkSel(b.getAttribute("data-m")||"");});})();function __chMarkLabel(v){return v==="skip"?"\u2013":v==="fac"?"\u0424":v==="corp"?"\u041A":"";}function __chMarkTitle(v){return v==="skip"?"\u041D\u0435 \u0432 \u0447\u0435\u0440\u0442\u0451\u0436\u0435 (\u043A\u043B\u0438\u043A \u0432\u0435\u0440\u043D\u0451\u0442 \u043A \u0430\u0432\u0442\u043E)":v==="fac"?"\u0421\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0441\u0430\u0434\u043E\u043C":v==="corp"?"\u0421\u0447\u0438\u0442\u0430\u0442\u044C \u043A\u043E\u0440\u043F\u0443\u0441\u043E\u043C":"\u0410\u0432\u0442\u043E \u2014 \u043A\u043B\u0438\u043A: \u0438\u0441\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0438\u0437 \u0447\u0435\u0440\u0442\u0451\u0436\u0430";}function __row(s,sub){let r=s.data,a=document.createElement("button");a.className="row"+(sub?" sub":"")+(s.mesh?"":" nomesh");a.innerHTML='<span class="row-pos"></span><span class="row-main"><span class="row-name"></span><span class="row-sub"></span></span><span class="row-mark" title=""></span>';a.querySelector(".row-pos").textContent=r.pos!=null?r.pos:"\xB7";a.querySelector(".row-name").textContent=r.name||"\u0411\u0435\u0437 \u0438\u043C\u0435\u043D\u0438";a.querySelector(".row-sub").textContent=s.dims||(s.mesh?"":"\u043D\u0435\u0442 \u0433\u0435\u043E\u043C\u0435\u0442\u0440\u0438\u0438");let mk=a.querySelector(".row-mark");function syncMark(){mk.textContent=__chMarkLabel(s.chMark);mk.className="row-mark"+(s.chMark?" mk-"+s.chMark:"");mk.title=__chMarkTitle(s.chMark);}syncMark();mk.addEventListener("click",ev=>{ev.stopPropagation();let seq=[void 0,"skip","fac","corp"],ix=seq.indexOf(s.chMark);s.chMark=seq[(ix+1)%seq.length];syncMark();});a.addEventListener("click",ev=>{let ad=ev.ctrlKey||ev.metaKey||_e.multi;if(ev.shiftKey&&_e.anchor&&_e.anchor!==s)__selRange(s);else ti(s,ad);!ad&&!ev.shiftKey&&s.mesh&&Ur(new Dt().setFromObject(s.mesh))});s.listRow=a;_e.sel.has(s)&&a.classList.add("active");_e.rows.push(s);return a}
 function __selGroup(g,ad){if(!g.items.length)return;if(!ad)ti(null);let all=g.items.every(p=>_e.sel.has(p));if(ad&&all)for(let p of g.items)_e.sel.delete(p),du(p,!1),p.listRow&&p.listRow.classList.remove("active");else for(let p of g.items)_e.sel.has(p)||(_e.sel.add(p),du(p,!0),p.listRow&&p.listRow.classList.add("active"));_e.anchor=g.items[g.items.length-1];_e.selected=_e.sel.size?[..._e.sel][_e.sel.size-1]:null;__selTag()}
 function __markGroups(){for(let g of _e.groups||[]){if(!g.el)continue;let all=g.items.length>0&&g.items.every(p=>_e.sel.has(p)),some=!all&&g.items.some(p=>_e.sel.has(p));g.el.classList.toggle("active",all),g.el.classList.toggle("part",some)}}
 function xu(n){let e=document.getElementById("list");e.innerHTML="",_e.rows=[],_e.groups=[];let t=n.trim().toLowerCase(),i=0,G=new Map;for(let s of _e.parts){let r=s.data;s.listRow=null;if(r.kind==="env")continue;let o=`${r.pos??""} ${r.name??""} ${r.material??""}`.toLowerCase();if(t&&!o.includes(t))continue;let k=(r.pos!=null?"p"+r.pos:"n"+(r.name||"?"))+"|"+(s.dims||"");G.has(k)||G.set(k,{key:k,pos:r.pos,name:r.name||"\u0411\u0435\u0437 \u0438\u043C\u0435\u043D\u0438",dims:s.dims,items:[],el:null});G.get(k).items.push(s),i++}for(let g of G.values()){if(g.items.length<2){e.appendChild(__row(g.items[0]));continue}let open=t?!0:_e.open.has(g.key),w=document.createElement("div");w.className="grp"+(open?" open":"");let line=document.createElement("div");line.className="grp-line";let tog=document.createElement("button");tog.className="grp-tog",tog.title="\u0420\u0430\u0437\u0432\u0435\u0440\u043D\u0443\u0442\u044C";let head=document.createElement("button");head.className="row grp-head",head.title="\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0432\u0441\u0435 \u0434\u0435\u0442\u0430\u043B\u0438 \u0433\u0440\u0443\u043F\u043F\u044B",head.innerHTML='<span class="row-pos"></span><span class="row-main"><span class="row-name"></span><span class="row-sub"></span></span><span class="grp-cnt"></span>';head.querySelector(".row-pos").textContent=g.pos!=null?g.pos:"\xB7",head.querySelector(".row-name").textContent=g.name,head.querySelector(".row-sub").textContent=g.dims||"",head.querySelector(".grp-cnt").textContent=g.items.length+" \u0448\u0442";let box=document.createElement("div");box.className="grp-items";for(let p of g.items)box.appendChild(__row(p,!0));tog.addEventListener("click",ev=>{ev.stopPropagation();let o=w.classList.toggle("open");o?_e.open.add(g.key):_e.open.delete(g.key)});head.addEventListener("click",ev=>{__selGroup(g,ev.shiftKey||ev.ctrlKey||ev.metaKey||_e.multi)});line.appendChild(tog),line.appendChild(head),w.appendChild(line),w.appendChild(box),e.appendChild(w),g.el=head,_e.groups.push(g)}__markGroups();let c=document.getElementById("list-count");c.textContent=(t?`${i} \u0438\u0437 ${_e.parts.length}`:`${_e.parts.length}`)+(_e.groups.length?` \xB7 \u0433\u0440\u0443\u043F\u043F: ${_e.groups.length}`:"")}
@@ -4384,7 +4432,7 @@ function __parseOBJ(text, filename) {
   if (!parts.length) return null;
   return { format: "bazis-parts", version: 1, units: "mm", article: { name: (filename || "\u041C\u043E\u0434\u0435\u043B\u044C").replace(/\.obj$/i, "") }, parts: parts };
 }
-function vu(n){let e=new FileReader;e.onload=()=>{try{let t=e.result,i=new Uint8Array(t,0,Math.min(4,t.byteLength));if(i[0]===66&&i[1]===90&&i[2]===56&&i[3]===53){let s=uu(t,n.name);s.warnings&&s.warnings.length&&console.warn("b3d warnings:",s.warnings),ko(s)}else if(/\.obj$/i.test(n.name)){let s=__parseOBJ(new TextDecoder("utf-8").decode(t),n.name);if(!s)throw new Error("\u0432 \u0444\u0430\u0439\u043B\u0435 .obj \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043D\u0438 \u043E\u0434\u043D\u043E\u0439 \u0433\u0440\u0430\u043D\u0438 (\u0441\u0442\u0440\u043E\u043A\u0438 \u00ABf \u2026\u00BB)");ko(s)}else ko(JSON.parse(new TextDecoder("utf-8").decode(t)))}catch(t){console.error(t),alert("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0439\u043B: "+t.message)}},e.readAsArrayBuffer(n)}document.getElementById("file-input").addEventListener("change",n=>{__openFiles(n.target.files),n.target.value=""});window.addEventListener("dragover",n=>{n.preventDefault()});window.addEventListener("drop",n=>{n.preventDefault(),__openFiles(n.dataTransfer.files)});document.getElementById("btn-open").addEventListener("click",()=>document.getElementById("file-input").click());document.getElementById("btn-fit").addEventListener("click",Vo);document.getElementById("btn-showall").addEventListener("click",mx);document.getElementById("btn-isolate").addEventListener("click",()=>_u());document.getElementById("btn-hide").addEventListener("click",px);document.getElementById("tag-close").addEventListener("click",()=>ti(null));document.getElementById("btn-links").addEventListener("click",()=>{_e.linksOn=!_e.linksOn,Go()});document.getElementById("explode").addEventListener("input",n=>{let r=parseFloat(n.target.value)||0;r<=2&&(r=0,n.target.value=0);_e.explode=r*r/1e4*(_e.hasExp?1:1.5),__expLabel(r),fx()});var Ho=document.getElementById("search");Ho.addEventListener("input",()=>xu(Ho.value));Ho.addEventListener("keydown",n=>{if(n.key==="Enter"){let e=_e.parts.find(t=>t.listRow);e&&(ti(e),e.mesh&&Ur(new Dt().setFromObject(e.mesh)))}});document.getElementById("btn-panel").addEventListener("click",()=>{document.getElementById("sidebar").classList.toggle("open")});document.getElementById("btn-demo").addEventListener("click",()=>ko(_x()));function gx(n,e,t){let i=[],s=n,r=e,o=t,a=[[0,0,0],[s,0,0],[s,r,0],[0,r,0],[0,0,o],[s,0,o],[s,r,o],[0,r,o]],c=[[0,1,2,3],[5,4,7,6],[4,0,3,7],[1,5,6,2],[3,2,6,7],[4,5,1,0]],l=[],h=[];for(let f of c){let u=l.length/3;for(let d of f)l.push(...a[d]);h.push(u,u+1,u+2,u,u+2,u+3)}return{positions:l,indices:h}}function _x(){let s="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0411\u0435\u043B\u044B\u0439",r="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0414\u0443\u0431",o=(c,l,h,f,u,d,_,x)=>({id:c,pos:String(l),name:h,material:f,thickness:16,coords:"local",matrix:x,mesh:gx(u,d,_),block:"\u0422\u0443\u043C\u0431\u0430 \u0414-1"}),a=(c,l,h)=>[1,0,0,c,0,1,0,l,0,0,1,h,0,0,0,1];return{format:"bazis-parts",version:1,units:"mm",article:{name:"\u0414\u0435\u043C\u043E: \u0442\u0443\u043C\u0431\u0430 \u0414-1",code:null},parts:[o(1,1,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043B\u0435\u0432\u0430\u044F",s,16,720,520,a(0,0,0)),o(2,2,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043F\u0440\u0430\u0432\u0430\u044F",s,16,720,520,a(584,0,0)),o(3,3,"\u0414\u043D\u043E",s,600-2*16,16,520,a(16,60,0)),o(4,4,"\u041A\u0440\u044B\u0448\u043A\u0430",s,600-2*16,16,520,a(16,704,0)),o(5,5,"\u041F\u043E\u043B\u043A\u0430",s,600-2*16,16,500,a(16,380,0)),o(6,6,"\u0417\u0430\u0434\u043D\u044F\u044F \u0441\u0442\u0435\u043D\u043A\u0430",s,600-2*16,628,4,a(16,76,-4)),o(7,7,"\u0424\u0430\u0441\u0430\u0434",r,596,300,16,a(2,402,522))],skipped:[]}}document.getElementById("btn-explode0").addEventListener("click",()=>{document.getElementById("explode").value=0,_e.explode=0,__expLabel(0),fx()});document.getElementById("btn-top").addEventListener("click",()=>{__setView(0,1,.0015),__markView("btn-top")});document.getElementById("btn-front").addEventListener("click",()=>{__setView(0,0,1),__markView("btn-front")});document.getElementById("btn-side").addEventListener("click",()=>{__setView(1,0,0),__markView("btn-side")});document.getElementById("btn-iso").addEventListener("click",()=>{__setView(.75,.6,.9,!0),__markView("btn-iso")});document.getElementById("btn-furn").addEventListener("click",()=>{_e.hideFurn=!_e.hideFurn,__vis()});document.getElementById("btn-rect").addEventListener("click",()=>{_e.rectMode=!_e.rectMode,fs.enabled=!_e.rectMode,document.getElementById("btn-rect").classList.toggle("on",_e.rectMode)});__rectInit();document.getElementById("btn-wire").addEventListener("click",()=>{_e.wire=!_e.wire,__applyWire()});document.getElementById("btn-multi").addEventListener("click",()=>{_e.multi=!_e.multi,document.getElementById("btn-multi").classList.toggle("on",_e.multi)});window.addEventListener("keydown",n=>{if(n.target&&/input|textarea/i.test(n.target.tagName))return;if(!n.key)return;if((n.ctrlKey||n.metaKey)&&n.key.toLowerCase()==="a")n.preventDefault(),__selAll();else if(n.key==="Escape")ti(null)});function __expLabel(r){let e=document.getElementById("explode-label");e&&(e.textContent="Разлёт "+Math.round(r)+"%")}
+function vu(n){let e=new FileReader;e.onload=()=>{try{let t=e.result,i=new Uint8Array(t,0,Math.min(4,t.byteLength));if(i[0]===66&&i[1]===90&&i[2]===56&&i[3]===53){let s=uu(t,n.name);s.warnings&&s.warnings.length&&console.warn("b3d warnings:",s.warnings),ko(s)}else if(/\.obj$/i.test(n.name)){let s=__parseOBJ(new TextDecoder("utf-8").decode(t),n.name);if(!s)throw new Error("\u0432 \u0444\u0430\u0439\u043B\u0435 .obj \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E \u043D\u0438 \u043E\u0434\u043D\u043E\u0439 \u0433\u0440\u0430\u043D\u0438 (\u0441\u0442\u0440\u043E\u043A\u0438 \u00ABf \u2026\u00BB)");ko(s)}else ko(JSON.parse(new TextDecoder("utf-8").decode(t)))}catch(t){console.error(t),alert("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u0444\u0430\u0439\u043B: "+t.message)}},e.readAsArrayBuffer(n)}document.getElementById("file-input").addEventListener("change",n=>{__openFiles(n.target.files),n.target.value=""});window.addEventListener("dragover",n=>{n.preventDefault()});window.addEventListener("drop",n=>{n.preventDefault(),__openFiles(n.dataTransfer.files)});document.getElementById("btn-open").addEventListener("click",()=>document.getElementById("file-input").click());document.getElementById("btn-fit").addEventListener("click",Vo);document.getElementById("btn-showall").addEventListener("click",mx);document.getElementById("btn-isolate").addEventListener("click",()=>_u());document.getElementById("btn-hide").addEventListener("click",px);document.getElementById("tag-close").addEventListener("click",()=>ti(null));document.getElementById("btn-links").addEventListener("click",()=>{_e.linksOn=!_e.linksOn,Go()});document.getElementById("explode").addEventListener("input",n=>{let r=parseFloat(n.target.value)||0;r<=2&&(r=0,n.target.value=0);_e.explode=r*r/1e4*(_e.hasExp?1:1.5),__expLabel(r),fx()});var Ho=document.getElementById("search");Ho.addEventListener("input",()=>xu(Ho.value));Ho.addEventListener("keydown",n=>{if(n.key==="Enter"){let e=_e.parts.find(t=>t.listRow);e&&(ti(e),e.mesh&&Ur(new Dt().setFromObject(e.mesh)))}});document.getElementById("btn-panel").addEventListener("click",()=>{document.getElementById("sidebar").classList.toggle("open")});document.getElementById("btn-demo").addEventListener("click",()=>ko(_x()));function gx(n,e,t){let i=[],s=n,r=e,o=t,a=[[0,0,0],[s,0,0],[s,r,0],[0,r,0],[0,0,o],[s,0,o],[s,r,o],[0,r,o]],c=[[0,1,2,3],[5,4,7,6],[4,0,3,7],[1,5,6,2],[3,2,6,7],[4,5,1,0]],l=[],h=[];for(let f of c){let u=l.length/3;for(let d of f)l.push(...a[d]);h.push(u,u+1,u+2,u,u+2,u+3)}return{positions:l,indices:h}}function _x(){let s="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0411\u0435\u043B\u044B\u0439",r="\u041B\u0414\u0421\u041F 16 \u043C\u043C \u0414\u0443\u0431",o=(c,l,h,f,u,d,_,x)=>({id:c,pos:String(l),name:h,material:f,thickness:16,coords:"local",matrix:x,mesh:gx(u,d,_),block:"\u0422\u0443\u043C\u0431\u0430 \u0414-1"}),a=(c,l,h)=>[1,0,0,c,0,1,0,l,0,0,1,h,0,0,0,1];return{format:"bazis-parts",version:1,units:"mm",article:{name:"\u0414\u0435\u043C\u043E: \u0442\u0443\u043C\u0431\u0430 \u0414-1",code:null},parts:[o(1,1,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043B\u0435\u0432\u0430\u044F",s,16,720,520,a(0,0,0)),o(2,2,"\u0411\u043E\u043A\u043E\u0432\u0438\u043D\u0430 \u043F\u0440\u0430\u0432\u0430\u044F",s,16,720,520,a(584,0,0)),o(3,3,"\u0414\u043D\u043E",s,600-2*16,16,520,a(16,60,0)),o(4,4,"\u041A\u0440\u044B\u0448\u043A\u0430",s,600-2*16,16,520,a(16,704,0)),o(5,5,"\u041F\u043E\u043B\u043A\u0430",s,600-2*16,16,500,a(16,380,0)),o(6,6,"\u0417\u0430\u0434\u043D\u044F\u044F \u0441\u0442\u0435\u043D\u043A\u0430",s,600-2*16,628,4,a(16,76,-4)),o(7,7,"\u0424\u0430\u0441\u0430\u0434",r,596,300,16,a(2,402,522))],skipped:[]}}document.getElementById("btn-explode0").addEventListener("click",()=>{document.getElementById("explode").value=0,_e.explode=0,__expLabel(0),fx()});document.getElementById("btn-top").addEventListener("click",()=>{__setView(0,1,.0015),__markView("btn-top")});document.getElementById("btn-front").addEventListener("click",()=>{__setView(0,0,1),__markView("btn-front")});document.getElementById("btn-side").addEventListener("click",()=>{__setView(1,0,0),__markView("btn-side")});document.getElementById("btn-iso").addEventListener("click",()=>{__setView(.75,.6,.9,!0),__markView("btn-iso")});document.getElementById("btn-furn").addEventListener("click",()=>{_e.hideFurn=!_e.hideFurn,__vis()});document.getElementById("btn-rect").addEventListener("click",()=>{_e.rectMode=!_e.rectMode,fs.enabled=!_e.rectMode,document.getElementById("btn-rect").classList.toggle("on",_e.rectMode)});__rectInit();__measInit();document.getElementById("btn-wire").addEventListener("click",()=>{_e.wire=!_e.wire,__applyWire()});document.getElementById("btn-multi").addEventListener("click",()=>{_e.multi=!_e.multi,document.getElementById("btn-multi").classList.toggle("on",_e.multi)});window.addEventListener("keydown",n=>{if(n.target&&/input|textarea/i.test(n.target.tagName))return;if(!n.key)return;if((n.ctrlKey||n.metaKey)&&n.key.toLowerCase()==="a")n.preventDefault(),__selAll();else if(n.key==="Escape")ti(null)});function __expLabel(r){let e=document.getElementById("explode-label");e&&(e.textContent="Разлёт "+Math.round(r)+"%")}
 function __linkOwners(){let L=_e.linkBase;if(!L)return;let P=[];for(let p of _e.parts){if(!p.mesh)continue;let b=p.mesh.geometry.boundingBox;if(!b)continue;P.push({p:p,b:b,v:(b.max.x-b.min.x)*(b.max.y-b.min.y)*(b.max.z-b.min.z)})}let n=L.length/3,O=new Array(n).fill(null);for(let i=0;i<n;i++){let x=L[i*3],y=L[i*3+1],z=L[i*3+2],best=null,bd=1/0;for(let q of P){let b=q.b,dx=x<b.min.x?b.min.x-x:x>b.max.x?x-b.max.x:0,dy=y<b.min.y?b.min.y-y:y>b.max.y?y-b.max.y:0,dz=z<b.min.z?b.min.z-z:z>b.max.z?z-b.max.z:0,d=dx*dx+dy*dy+dz*dz;(d<bd-1e-6||d<bd+1e-6&&best&&q.v<best.v)&&(bd=d,best=q)}O[i]=best&&bd<=900?best.p:null}_e.linkOwner=O}function __linkMove(){let L=_e.linkBase,A=_e.linkAttr,O=_e.linkOwner;if(!L||!A||!O)return;let ar=A.array;for(let i=0;i<O.length;i++){let p=O[i],ox=0,oy=0,oz=0;p&&p.mesh&&(ox=p.mesh.position.x,oy=p.mesh.position.y,oz=p.mesh.position.z);ar[i*3]=L[i*3]+ox,ar[i*3+1]=L[i*3+1]+oy,ar[i*3+2]=L[i*3+2]+oz}A.needsUpdate=!0,_e.linksObj&&_e.linksObj.geometry.computeBoundingSphere()}
 function __mkOrtho(){let c=new Tt(50,1,1,2e5);c.isPerspectiveCamera=!1,c.isOrthographicCamera=!0,c.left=-1,c.right=1,c.top=1,c.bottom=-1,c.near=1,c.far=2e5,c.zoom=1,c.updateProjectionMatrix=function(){let dx=(this.right-this.left)/(2*this.zoom),dy=(this.top-this.bottom)/(2*this.zoom),cx=(this.right+this.left)/2,cy=(this.top+this.bottom)/2,l=cx-dx,r=cx+dx,t=cy+dy,b=cy-dy,w=1/(r-l),h=1/(t-b),p=1/(this.far-this.near);this.projectionMatrix.set(2*w,0,0,-(r+l)*w,0,2*h,0,-(t+b)*h,0,0,-2*p,-(this.far+this.near)*p,0,0,0,1),this.projectionMatrixInverse.copy(this.projectionMatrix).invert()},c.updateProjectionMatrix();return c}
 function __useOrtho(on){_e.persp||(_e.persp=Ht),on&&!_e.orth&&(_e.orth=__mkOrtho());let w=on?_e.orth:_e.persp;if(w===Ht)return;w.position.copy(Ht.position),w.up.copy(Ht.up),w.zoom=1,Ht=w,fs.object=w,gu()}
@@ -4412,6 +4460,199 @@ let g=new kt;g.setAttribute("position",new Ct(V,3)),_e.dimObj=new ts(g,new Ii({c
 function __dimPlace(){let A=_e.dimAnchors;if(!A)return;let r=Qt.domElement.getBoundingClientRect(),W=r.width,H=r.height;Ht.updateMatrixWorld();for(let a of A){let v=a.p.clone().project(Ht),x=(v.x+1)/2*W,y=(1-v.y)/2*H,ok=v.z<1&&x>-80&&x<W+80&&y>-40&&y<H+40;a.el.style.display=ok?"block":"none",ok&&(a.el.style.left=x+"px",a.el.style.top=y+"px")}}
 function __dimTick(){if(!_e.dimOn)return;__dimPlace(),_e.dimRAF=requestAnimationFrame(__dimTick)}
 function __dimsToggle(){if(_e.dimOn){__dimClear();return}if(!__dimBuild())return;_e.dimOn=!0,document.getElementById("dlabs").classList.add("on");let k=document.getElementById("btn-dims");k&&k.classList.add("on"),__dimTick()}
+/* ---------- Линейка: расстояние между вершинами прямо в 3D, в том числе в ортогональных видах ---------- */
+function __mvVerts(p) {
+  if (p._mv) return p._mv;
+  var pos = p.mesh.geometry.getAttribute("position"), seen = new Set(), out = [], i;
+  for (i = 0; i < pos.count; i++) {
+    var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), k = Math.round(x * 100) + "," + Math.round(y * 100) + "," + Math.round(z * 100);
+    if (!seen.has(k)) { seen.add(k); out.push(x, y, z); }
+  }
+  p._mv = new Float32Array(out);
+  return p._mv;
+}
+/* ближайшая к курсору вершина (в пределах 14 px); при близких расстояниях — та, что ближе к камере, и не закрытая другой деталью */
+function __mvSnap(cx, cy) {
+  var r = Qt.domElement.getBoundingClientRect(), W = r.width, H = r.height, R = 14, cand = [], v = new D(), part;
+  Ht.updateMatrixWorld();
+  for (part of _e.parts) {
+    if (!part.mesh || !part.mesh.visible) continue;
+    var bb = part.mesh.geometry.boundingBox;
+    if (!bb) continue;
+    part.mesh.updateWorldMatrix(true, false);
+    var m = part.mesh.matrixWorld, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, q, any = false;
+    for (q = 0; q < 8; q++) {
+      v.set(q & 1 ? bb.max.x : bb.min.x, q & 2 ? bb.max.y : bb.min.y, q & 4 ? bb.max.z : bb.min.z).applyMatrix4(m).project(Ht);
+      var sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H;
+      if (sx < x0) x0 = sx; if (sx > x1) x1 = sx; if (sy < y0) y0 = sy; if (sy > y1) y1 = sy;
+    }
+    if (cx < x0 - R || cx > x1 + R || cy < y0 - R || cy > y1 + R) continue;
+    var arr = __mvVerts(part), i;
+    for (i = 0; i < arr.length; i += 3) {
+      v.set(arr[i], arr[i + 1], arr[i + 2]).applyMatrix4(m);
+      var wx = v.x, wy = v.y, wz = v.z;
+      v.project(Ht);
+      if (v.z >= 1) continue;
+      var px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H, d = Math.hypot(px - cx, py - cy);
+      if (d <= R) cand.push({ d: d, z: v.z, w: new D(wx, wy, wz), sx: px, sy: py, ndc: [v.x, v.y] });
+    }
+  }
+  if (!cand.length) return null;
+  cand.sort(function (a, b) { return a.d - b.d; });
+  var d0 = cand[0].d, near = cand.filter(function (c) { return c.d <= d0 + 3; }).sort(function (a, b) { return a.z - b.z; });
+  var meshes = _e.wire ? [] : _e.parts.filter(function (p) { return p.mesh && p.mesh.visible; }).map(function (p) { return p.mesh; });
+  var list = near.concat(cand.filter(function (c) { return near.indexOf(c) < 0; })).slice(0, 12), k;
+  for (k = 0; k < list.length; k++) {
+    var c = list[k];
+    if (meshes.length) {
+      fu.setFromCamera({ x: c.ndc[0], y: c.ndc[1] }, Ht);
+      var hit = fu.intersectObjects(meshes, false);
+      var dist = fu.ray.origin.distanceTo(c.w);
+      if (hit.length && hit[0].distance < dist - 0.8) continue;   // вершина закрыта другой деталью
+    }
+    return c;
+  }
+  return null;
+}
+function __mvFmt(x) { return (Math.round(x * 10) / 10).toString().replace(".", ","); }
+function __mvScreen(p, W, H) { var v = p.clone().project(Ht); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H, v.z < 1]; }
+function __mvDraw() {
+  var svg = document.getElementById("meas-svg"), ui = document.getElementById("meas-ui");
+  if (!svg || !_e.meas) return;
+  var r = Qt.domElement.getBoundingClientRect(), W = r.width, H = r.height, M = _e.meas, s = "", i;
+  Ht.updateMatrixWorld();
+  function dot(p, col) { return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4" fill="' + col + '" stroke="#fff" stroke-width="1.5"/>'; }
+  M.list.forEach(function (m, idx) {
+    var a = __mvScreen(m.a, W, H), b = __mvScreen(m.b, W, H);
+    if (!a[2] || !b[2]) return;
+    var dx = m.b.x - m.a.x, dy = m.b.y - m.a.y, dz = m.b.z - m.a.z, L = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    s += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#B98A4B" stroke-width="2"/>' + dot(a, "#B98A4B") + dot(b, "#B98A4B");
+    var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    s += '<text x="' + mx.toFixed(1) + '" y="' + (my - 8).toFixed(1) + '" text-anchor="middle">' + __mvFmt(L) + ' \u043C\u043C</text>';
+    s += '<text class="sm" x="' + mx.toFixed(1) + '" y="' + (my + 6).toFixed(1) + '" text-anchor="middle">\u0394X ' + __mvFmt(Math.abs(dx)) + ' \u00B7 \u0394Y ' + __mvFmt(Math.abs(dy)) + ' \u00B7 \u0394Z ' + __mvFmt(Math.abs(dz)) + '</text>';
+    m._s = [mx, my];
+  });
+  if (M.cur) { var c = __mvScreen(M.cur, W, H); if (c[2]) s += dot(c, "#B98A4B"); }
+  if (M.hover) {
+    var h = M.hover; s += '<circle cx="' + h.sx.toFixed(1) + '" cy="' + h.sy.toFixed(1) + '" r="7" fill="none" stroke="#B98A4B" stroke-width="2"/>';
+    if (M.cur) {
+      var a2 = __mvScreen(M.cur, W, H), dx2 = h.w.x - M.cur.x, dy2 = h.w.y - M.cur.y, dz2 = h.w.z - M.cur.z, L2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
+      s += '<line x1="' + a2[0].toFixed(1) + '" y1="' + a2[1].toFixed(1) + '" x2="' + h.sx.toFixed(1) + '" y2="' + h.sy.toFixed(1) + '" stroke="#B98A4B" stroke-width="1.5" stroke-dasharray="5 4"/>';
+      s += '<text x="' + ((a2[0] + h.sx) / 2).toFixed(1) + '" y="' + ((a2[1] + h.sy) / 2 - 8).toFixed(1) + '" text-anchor="middle">' + __mvFmt(L2) + ' \u043C\u043C</text>';
+    }
+  }
+  svg.innerHTML = s;
+  // кнопки под последним замером
+  if (ui) {
+    var last = M.list[M.list.length - 1], b = ui.querySelector(".mbadge");
+    if (last && last._s && M.badge !== false) {
+      if (!b) { b = document.createElement("div"); b.className = "mbadge"; ui.appendChild(b); __mvBadge(b); }
+      b.style.left = last._s[0] + "px"; b.style.top = (last._s[1] + 16) + "px";
+    } else if (b) b.remove();
+  }
+}
+function __mvBadge(b) {
+  b.innerHTML = '<button type="button" data-a="add" title="Поставить этот размер на чертёж (на тот вид, с которого вы смотрите)">\u0412 \u0447\u0435\u0440\u0442\u0451\u0436</button><button type="button" data-a="del" title="Убрать этот замер">\u2715</button>';
+  b.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+  b.addEventListener("click", function (e) {
+    var t = e.target.closest ? e.target.closest("button") : null;
+    if (!t) return;
+    e.stopPropagation();
+    if (t.getAttribute("data-a") === "del") { _e.meas.list.pop(); __mvDraw(); }
+    else if (t.getAttribute("data-a") === "add") __mvToSheet();
+  });
+}
+function __mvTick() {
+  if (!_e.measOn) return;
+  __mvDraw();
+  _e.measRAF = requestAnimationFrame(__mvTick);
+}
+function __measSet(on) {
+  _e.measOn = !!on;
+  if (!_e.meas) _e.meas = { list: [], cur: null, hover: null };
+  var host = document.getElementById("canvas-host"), btn = document.getElementById("btn-meas");
+  host.classList.toggle("measuring", _e.measOn);
+  btn && btn.classList.toggle("on", _e.measOn);
+  if (_e.measOn) { _e.measRAF && cancelAnimationFrame(_e.measRAF); __mvTick(); }
+  else {
+    _e.meas.cur = null; _e.meas.hover = null;
+    _e.measRAF && cancelAnimationFrame(_e.measRAF); _e.measRAF = null;
+    var svg = document.getElementById("meas-svg"), ui = document.getElementById("meas-ui");
+    if (svg) svg.innerHTML = ""; if (ui) ui.innerHTML = "";
+    _e.meas.list = [];
+  }
+}
+function __measInit() {
+  var cv = Qt.domElement, down = null;
+  document.getElementById("btn-meas").addEventListener("click", function () { __measSet(!_e.measOn); });
+  cv.addEventListener("pointermove", function (e) {
+    if (!_e.measOn || !_e.meas) return;
+    var r = cv.getBoundingClientRect();
+    _e.meas.hover = e.buttons ? null : __mvSnap(e.clientX - r.left, e.clientY - r.top);
+  });
+  cv.addEventListener("pointerleave", function () { if (_e.meas) _e.meas.hover = null; });
+  cv.addEventListener("pointerdown", function (e) { down = [e.clientX, e.clientY]; });
+  cv.addEventListener("pointerup", function (e) {
+    if (!_e.measOn || !down) return;
+    var moved = Math.hypot(e.clientX - down[0], e.clientY - down[1]); down = null;
+    if (moved > 6 || e.button !== 0) return;
+    var r = cv.getBoundingClientRect(), sn = __mvSnap(e.clientX - r.left, e.clientY - r.top), M = _e.meas;
+    if (!sn) return;
+    if (!M.cur) M.cur = sn.w.clone();
+    else { if (sn.w.distanceTo(M.cur) > 0.01) M.list.push({ a: M.cur.clone(), b: sn.w.clone() }); M.cur = null; }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (!_e.measOn) return;
+    var tg = e.target && e.target.tagName;
+    if (tg === "INPUT" || tg === "TEXTAREA") return;
+    if (e.key === "Escape") { _e.meas.list = []; _e.meas.cur = null; }
+    else if (e.key === "Backspace" || e.key === "Delete") { if (_e.meas.cur) _e.meas.cur = null; else _e.meas.list.pop(); e.preventDefault(); }
+  });
+}
+/* ---------- ручные размеры: хранятся по названию модели, чтобы не пропадали при перезагрузке ---------- */
+function __manKey() { var t = document.getElementById("title"); return "svd_man_" + ((t && t.textContent) ? t.textContent.trim() : "model"); }
+function __manGet() {
+  var k = __manKey();
+  if (!_e.manDims || _e.manKeyLoaded !== k) {
+    try { _e.manDims = JSON.parse(localStorage.getItem(k) || "[]"); } catch (e) { _e.manDims = []; }
+    if (!Array.isArray(_e.manDims)) _e.manDims = [];
+    _e.manKeyLoaded = k;
+  }
+  return _e.manDims;
+}
+function __manSave() { try { localStorage.setItem(__manKey(), JSON.stringify(_e.manDims || [])); } catch (e) {} }
+function __manUI() {
+  var n = __manGet().length, box = document.getElementById("sh-man"), b = document.getElementById("sh-man-n");
+  if (box) box.style.display = n ? "" : "none";
+  if (b) b.textContent = String(n);
+}
+function __toast(msg) {
+  var t = document.getElementById("mtoast");
+  if (!t) { t = document.createElement("div"); t.id = "mtoast"; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("on"); }, 4200);
+}
+/* на какой вид чертежа попадает размер: по направлению камеры; если вид не ортогональный — по плоскости, в которой лежит отрезок */
+function __mvViewId(m) {
+  var d = Ht.position.clone().sub(fs.target).normalize();
+  if (Math.abs(d.z) > 0.985) return { id: d.z > 0 ? "front" : "back", exact: true };
+  if (Math.abs(d.x) > 0.985) return { id: d.x > 0 ? "right" : "left", exact: true };
+  if (d.y > 0.985) return { id: "top", exact: true };
+  var dx = Math.abs(m.b.x - m.a.x), dy = Math.abs(m.b.y - m.a.y), dz = Math.abs(m.b.z - m.a.z), L = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  var c = [["front", dz / L], ["left", dx / L], ["top", dy / L]].sort(function (p, q) { return p[1] - q[1]; })[0];
+  return { id: c[0], exact: c[1] < 0.08 };
+}
+var __VIEWNAME = { front: "\u0421\u043F\u0435\u0440\u0435\u0434\u0438", back: "\u0421\u0437\u0430\u0434\u0438", left: "\u0421\u043B\u0435\u0432\u0430", right: "\u0421\u043F\u0440\u0430\u0432\u0430", top: "\u0421\u0432\u0435\u0440\u0445\u0443" };
+function __mvToSheet() {
+  var M = _e.meas, last = M && M.list[M.list.length - 1];
+  if (!last) return;
+  if (_e.explode > 0) { __toast("\u0421\u0432\u0435\u0434\u0438\u0442\u0435 \u0440\u0430\u0437\u043B\u0451\u0442 \u0432 \u043D\u043E\u043B\u044C: \u0432 \u0440\u0430\u0437\u043B\u0451\u0442\u0435 \u043A\u043E\u043E\u0440\u0434\u0438\u043D\u0430\u0442\u044B \u043D\u0435 \u0441\u043E\u0432\u043F\u0430\u0434\u0443\u0442 \u0441 \u0447\u0435\u0440\u0442\u0451\u0436\u043E\u043C"); return; }
+  var vw = __mvViewId(last);
+  __manGet().push({ v: vw.id, a: [last.a.x, last.a.y, last.a.z], b: [last.b.x, last.b.y, last.b.z], flip: 0 });
+  __manSave(); __manUI();
+  M.list.pop();
+  __toast("\u0420\u0430\u0437\u043C\u0435\u0440 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D \u043D\u0430 \u0432\u0438\u0434 \u00AB" + __VIEWNAME[vw.id] + "\u00BB. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u00AB\u0427\u0435\u0440\u0442\u0451\u0436\u00BB" + (vw.exact ? "" : ". \u041E\u0442\u0440\u0435\u0437\u043E\u043A \u043D\u0430\u043A\u043B\u043E\u043D\u043D\u044B\u0439: \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430 \u0435\u0433\u043E \u043F\u0440\u043E\u0435\u043A\u0446\u0438\u044F"));
+}
 function __mkLink(){if(!_e.srcM)return"";let u=location.origin+location.pathname,q=new URLSearchParams;q.set("c",_e.srcM),_e.srcS&&q.set("s",_e.srcS);let t=document.getElementById("title"),d=String(_e.srcM).split("/").pop().replace(/\.(b3d|json|obj)$/i,"");t&&t.textContent&&t.textContent.trim()!==d&&q.set("t",t.textContent.trim());return u+"?"+q.toString()}
 function __linkOpen(){let v=__mkLink();if(!v)return;let d=document.getElementById("lnk"),i=document.getElementById("lnk-url");i.value=v,document.getElementById("lnk-msg").textContent="",d.classList.add("on");try{i.focus(),i.setSelectionRange(0,v.length)}catch(e){}}
 function __linkInit(){let d=document.getElementById("lnk");if(!d)return;document.getElementById("lnk-close").addEventListener("click",()=>d.classList.remove("on"));d.addEventListener("click",e=>{e.target===d&&d.classList.remove("on")});let sh=document.getElementById("lnk-share");navigator.share&&(sh.style.display="inline-block",sh.addEventListener("click",()=>{navigator.share({title:document.getElementById("title").textContent||"\u041C\u043E\u0434\u0435\u043B\u044C",url:document.getElementById("lnk-url").value}).catch(()=>{})}));document.getElementById("lnk-copy").addEventListener("click",()=>{let i=document.getElementById("lnk-url"),m=document.getElementById("lnk-msg"),ok=()=>{m.textContent="\u0421\u0441\u044B\u043B\u043A\u0430 \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0430"},no=()=>{m.textContent="\u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0432\u0440\u0443\u0447\u043D\u0443\u044E: \u0442\u0435\u043A\u0441\u0442 \u0432\u044B\u0434\u0435\u043B\u0435\u043D"};try{i.focus(),i.setSelectionRange(0,i.value.length)}catch(e){}if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(i.value).then(ok).catch(()=>{try{document.execCommand("copy")?ok():no()}catch(e){no()}});else try{document.execCommand("copy")?ok():no()}catch(e){no()}})}
@@ -5296,6 +5537,50 @@ function __shFill(m, a, b) {
   m[key] = w > 0 && h > 0 ? sum / 2 / (w * h) : 1;
   return m[key];
 }
+/* ключевые вершины видимых контуров на виде: углы, вырезы, пересечения, а у скруглений и концов пазов — крайние точки дуги.
+   Возвращает координаты по горизонтали (U) и вертикали (W) вида, по ним строятся цепочки «Размеры контура» */
+function __shContourKeys(items, v, hAx, vAx) {
+  var segs = [], seen = {}, q = function (x) { return Math.round(x * 20); };   // шаг склейки 0,05 мм
+  items.forEach(function (m) {
+    var qi;
+    for (qi = 0; qi < m.E.length; qi++) {
+      var e = m.E[qi], vis = false, z;
+      for (z = 0; z < e.t.length; z++) {
+        var tt = e.t[z];
+        if (!m.ok[tt] || (m.N[tt * 3] * v[0] + m.N[tt * 3 + 1] * v[1] + m.N[tt * 3 + 2] * v[2]) <= 1e-6) vis = true;
+      }
+      if (!vis) continue;
+      var a = [e.a[hAx], e.a[vAx]], b = [e.b[hAx], e.b[vAx]];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.05) continue;
+      var ka = q(a[0]) + ',' + q(a[1]), kb = q(b[0]) + ',' + q(b[1]);
+      if (ka === kb) continue;
+      var key = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+      if (seen[key]) continue;
+      seen[key] = 1;
+      segs.push([a, b, ka, kb]);
+    }
+  });
+  var adj = {}, pt = {}, U = [], W = [];
+  segs.forEach(function (sg) {
+    pt[sg[2]] = sg[0]; pt[sg[3]] = sg[1];
+    (adj[sg[2]] = adj[sg[2]] || []).push(sg[3]);
+    (adj[sg[3]] = adj[sg[3]] || []).push(sg[2]);
+  });
+  var cos25 = Math.cos(25 * Math.PI / 180), eps = 0.005;
+  Object.keys(adj).forEach(function (k) {
+    var n = adj[k], p = pt[k];
+    if (n.length !== 2) { U.push(p[0]); W.push(p[1]); return; }   // конец линии или развилка
+    var a = pt[n[0]], b = pt[n[1]];
+    var v1 = [p[0] - a[0], p[1] - a[1]], v2 = [b[0] - p[0], b[1] - p[1]];
+    var l1 = Math.hypot(v1[0], v1[1]), l2 = Math.hypot(v2[0], v2[1]);
+    if (l1 < 1e-9 || l2 < 1e-9) return;
+    if ((v1[0] * v2[0] + v1[1] * v2[1]) / (l1 * l2) < cos25) { U.push(p[0]); W.push(p[1]); return; }   // угол
+    // крайняя точка дуги: оба соседа по одну сторону
+    if ((a[0] - p[0] > eps && b[0] - p[0] > eps) || (a[0] - p[0] < -eps && b[0] - p[0] < -eps)) U.push(p[0]);
+    if ((a[1] - p[1] > eps && b[1] - p[1] > eps) || (a[1] - p[1] < -eps && b[1] - p[1] < -eps)) W.push(p[1]);
+  });
+  return { U: U, W: W };
+}
 /* границы уровней -> отрезки между соседними уровнями (с краями диапазона) */
 function __shLevelsSegs(lv, lo, hi) {
   lv = lv.concat([lo, hi]).filter(function (v) { return v >= lo - 0.5 && v <= hi + 0.5; })
@@ -5438,11 +5723,11 @@ function __shGapDim(p0, p1, txt) {
    не поместился в общую строку целиком */
 var __SH_ROW_VIEWS = ['front', 'nofac', 'back', 'bnofac', 'left', 'lnofac', 'right', 'rnofac'];
 
-function __shPlan(W, H, D, views, rx) {
-  rx = rx || 0;
+function __shPlan(W, H, D, views, rx, ty) {
+  rx = rx || 0; ty = ty || 0;
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   A.w = A.x1 - A.x0; A.h = A.y1 - A.y0;
-  var g = 6, tH = 7, mL = 24, mR = 6, mT = 3, mB = 22;
+  var g = 6, tH = 7, mL = 24, mR = 6, mT = 3 + ty, mB = 22;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   function cell(a, b, s) { return { w: a * s + mL + mR, h: b * s + tH + mT + mB }; }
   var rowIds = __SH_ROW_VIEWS.filter(function (v) { return views.indexOf(v) >= 0; });
@@ -5520,10 +5805,10 @@ function __shPlan(W, H, D, views, rx) {
 function __shScaleLabel(den) { return '\u041C 1:' + String(den).replace('.', ','); }
 
 /* тот же лист A3, но один вид занимает всю рабочую область — для режима «по листу на вид» */
-function __shPlanOne(w, h, rx) {
+function __shPlanOne(w, h, rx, ty) {
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   var Aw = A.x1 - A.x0, Ah = A.y1 - A.y0;
-  var mL = 24, mR = 10 + (rx || 0), mT = 6, mB = 10, tH = 7;
+  var mL = 24, mR = 10 + (rx || 0), mT = 6 + (ty || 0), mB = 10, tH = 7;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   var i, den = dens[dens.length - 1];
   for (i = 0; i < dens.length; i++) {
@@ -5779,6 +6064,8 @@ function __shBuild(parts, opt) {
       if (m.max[k] > mx[k]) mx[k] = m.max[k];
     }
   });
+  // «Размеры контура» включаются, когда деталей мало (остальные скрыты): иначе цепочки превратятся в кашу
+  contourOn = opt.contourDims !== false && P.length <= 12;
   userExtras.forEach(function (m) {
     for (var k = 0; k < 3; k++) {
       if (m.min[k] < mn[k]) mn[k] = m.min[k];
@@ -5813,7 +6100,7 @@ function __shBuild(parts, opt) {
   var Pall = (extras.length || userExtras.length) ? P.concat(extras, userExtras) : P;
   var noFacAll = (extras.length || userK.length) ? noFac.concat(extras, userK) : noFac;
   var onePerSheet = !!opt.onePerSheet;
-  var rightDims = opt.rightDims !== false, RX = 16, levelsLeft = !!opt.levelsLeft;
+  var rightDims = opt.rightDims !== false, RX = 16, levelsLeft = !!opt.levelsLeft, TY = 13, contourOn;
   var finalDen = 1, finalTpl = 1;
 
   /* ----- лист 1 (или 1..4, если каждый вид на своём листе) ----- */
@@ -5863,6 +6150,20 @@ function __shBuild(parts, opt) {
       var lsegs = __shLevelsSegs(lvl, ext[0][vAx], ext[1][vAx]);
       if (lsegs.length >= 2) { vChain = lsegs; vChainList = null; }
     }
+    // «Размеры контура»: пока деталей на виде немного — все углы, вырезы и концы пазов цепочками сверху и справа
+    var contourW = null, zTop = false, zRight = false;
+    if (contourOn) {
+      var cvis = items.filter(function (m) { return !m.hw || m.cnt; });
+      if (cvis.length && cvis.length <= 12) {
+        var ck = __shContourKeys(cvis, vw.v, hAx, vAx);
+        var uS = __shLevelsSegs(ck.U, ext[0][hAx], ext[1][hAx]), wS = __shLevelsSegs(ck.W, ext[0][vAx], ext[1][vAx]);
+        if (uS.length >= 2 && uS.length <= 40) {
+          r += __shChain(uS, function (b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], yT]; }, [0, -7], 2.5, [4, 7.4, 10.8]);
+          zTop = true;
+        }
+        if (wS.length >= 2 && wS.length <= 40) contourW = wS;
+      }
+    }
     r += __shChain(hChain, hpt, [0, 7], hMin);
     if (vChainList) { for (var vi = 0; vi < vChainList.length; vi++) r += __shChain(vChainList[vi], vpt, [-7, 0], 2.5); }
     else r += __shChain(vChain, vpt, [-7, 0], 2.5);
@@ -5883,8 +6184,10 @@ function __shBuild(parts, opt) {
         uAxR = 2;
         rSegs = __shTallLevels(items, 2, 0, ext[1][0] - bw(ext[0][0], ext[1][0]), ext[1][0], ext[0][2], ext[1][2]);
       }
+      if (contourW) { rSegs = contourW; uAxR = vAx; }
       if (rSegs && rSegs.length >= 2) {
         r += __shChain(rSegs, function (b) { var q = [0, 0, 0]; q[uAxR] = b; return [xR, map(q)[1]]; }, [7, 0], 2.5, [4, 7.4, 10.8]);
+        zRight = true;
       }
     }
     r += __shDim([xL, yB], [xR, yB], [0, 16], String(Math.round(hv)));
@@ -5934,6 +6237,59 @@ function __shBuild(parts, opt) {
         r += __shOpenMark([oxa, oya, oxb, oyb], op.kind, hs);
       }
     }
+    // ручные размеры, поставленные во вьювере линейкой («В чертёж»): точки хранятся в координатах модели.
+    // Сторону выбираем сами, чтобы не лечь на автоматические цепочки и общие размеры (нижняя и левая зоны заняты всегда,
+    // верхняя и правая — когда включены цепочки контура и «Размеры справа»); рядом стоящие размеры встают следующим рядом.
+    if (opt.manualDims && opt.manualDims.length) {
+      var placed = [], cxm = (xL + xR) / 2, cym = (yT + yB) / 2;
+      // сверху всегда занято: подпись вида или цепочка контура
+      var inZone = function (kind, c) {
+        if (kind === 'h') return (c >= yB - 1 && c <= yB + 20) || (c >= yT - 24 && c <= yT + 1);
+        return (c >= xL - 20 && c <= xL + 1) || (zRight && c >= xR - 1 && c <= xR + 20);
+      };
+      opt.manualDims.forEach(function (md) {
+        // размер верен и на противоположном виде (измерили «сбоку» — он есть и на «слева»)
+        var opp = { front: 'back', back: 'front', left: 'right', right: 'left' }[md.v];
+        if (md.v !== baseId && opp !== baseId) return;
+        var dv3 = [md.b[0] - md.a[0], md.b[1] - md.a[1], md.b[2] - md.a[2]];
+        var du = __shDot(dv3, vw.r), dw = __shDot(dv3, vw.u), L = Math.hypot(du, dw);
+        if (L < 0.5) return;
+        var A = map(md.a), B = map(md.b), sgn = md.flip ? -1 : 1;
+        // почти горизонтальный или вертикальный отрезок (до 8 градусов) — горизонтальный или вертикальный размер с проекцией,
+        // иначе размер вдоль отрезка
+        var tilt = Math.atan2(Math.abs(dw), Math.abs(du)) * 180 / Math.PI;
+        var fmt = function (x) { return (Math.round(x * 10) / 10).toString().replace('.', ','); };
+        if (tilt < 8 || tilt > 82) {
+          var horiz = tilt < 8, kind = horiz ? 'h' : 'v', ci = horiz ? 1 : 0;
+          var lo = Math.min(A[ci], B[ci]), hi = Math.max(A[ci], B[ci]), mid = (A[ci] + B[ci]) / 2;
+          var s0 = horiz ? Math.min(A[0], B[0]) : Math.min(A[1], B[1]), s1 = horiz ? Math.max(A[0], B[0]) : Math.max(A[1], B[1]);
+          var lineAt = function (d, off) { return (d > 0 ? hi : lo) + d * off; };
+          // «естественная» сторона — к ближнему краю чертежа; если там занято цепочками, берём противоположную (внутрь)
+          var d = mid > (horiz ? cym : cxm) ? 1 : -1;
+          if (inZone(kind, lineAt(d, 9)) && !inZone(kind, lineAt(-d, 9))) d = -d;
+          d *= sgn;
+          var off = 9, pos = lineAt(d, off), guard = 0;
+          while (guard++ < 8 && placed.some(function (q) { return q.kind === kind && s0 < q.s1 - 0.5 && s1 > q.s0 + 0.5 && Math.abs(pos - q.pos) < 7; })) {
+            off += 8; pos = lineAt(d, off);
+          }
+          placed.push({ kind: kind, s0: s0, s1: s1, pos: pos });
+          var ext1 = d > 0 ? 1.5 : -1.5;
+          if (horiz) {
+            r += __shLine(A[0], A[1], A[0], pos + ext1, '.18') + __shLine(B[0], B[1], B[0], pos + ext1, '.18');
+            r += __shDim([A[0], pos], [B[0], pos], [0, 0], fmt(Math.abs(du)));
+          } else {
+            r += __shLine(A[0], A[1], pos + ext1, A[1], '.18') + __shLine(B[0], B[1], pos + ext1, B[1], '.18');
+            r += __shDim([pos, A[1]], [pos, B[1]], [0, 0], fmt(Math.abs(dw)));
+          }
+        } else {
+          var dx = B[0] - A[0], dy = B[1] - A[1], dl = Math.hypot(dx, dy) || 1, nx = -dy / dl, ny = dx / dl;
+          var mx2 = (A[0] + B[0]) / 2, my2 = (A[1] + B[1]) / 2;
+          if (nx * (mx2 - cxm) + ny * (my2 - cym) < 0) { nx = -nx; ny = -ny; }          // наружу
+          if (inZone('h', my2 + ny * 9) || inZone('v', mx2 + nx * 9)) { nx = -nx; ny = -ny; }   // занято — внутрь
+          r += __shDim(A, B, [nx * 9 * sgn, ny * 9 * sgn], fmt(L));
+        }
+      });
+    }
     return r;
   }
   var nfTitle = facades ? '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438 \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432'
@@ -5965,13 +6321,13 @@ function __shBuild(parts, opt) {
   } else if (onePerSheet) {
     for (var vi4 = 0; vi4 < activeViews.length; vi4++) {
       var id4 = activeViews[vi4], vm4 = viewsMeta[id4], need4 = viewNeed(id4);
-      var pl1 = __shPlanOne(need4[0], need4[1], rightDims ? RX : 0);
+      var pl1 = __shPlanOne(need4[0], need4[1], rightDims ? RX : 0, contourOn ? TY : 0);
       var out1 = ortho(id4, pl1.cell, vm4.items, vm4.title, pl1.s, pl1.m, pl1.den);
       frontSheets.push(__shFrame(opt, vi4 + 1, activeViews.length + 1, '1:' + String(pl1.den).replace('.', ','), out1));
       if (pl1.den > finalDen) finalDen = pl1.den;
     }
   } else {
-    var plan2 = __shPlan(W, H, D, activeViews, rightDims ? RX : 0), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
+    var plan2 = __shPlan(W, H, D, activeViews, rightDims ? RX : 0, contourOn ? TY : 0), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
     finalDen = plan2.den; finalTpl = plan2.tpl;
     for (var vi5 = 0; vi5 < activeViews.length; vi5++) {
       var id5 = activeViews[vi5], vm5 = viewsMeta[id5];
@@ -6070,11 +6426,13 @@ function __shStore(k, v) {
 }
 function __shVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 function __shInput() {
-  var out = [], i;
+  var out = [], i, vb = document.getElementById('sh-vis'), onlyVis = !!(vb && vb.checked);
   for (i = 0; i < _e.parts.length; i++) {
     var pt = _e.parts[i];
     if (!pt.mesh) continue;
     if (pt.chMark === 'skip') continue;
+    // «Только видимые»: чертёж собирается из того, что видно в 3D (изоляция, «Скрыть», переключатели «Фурнитура» и «Окружение»)
+    if (onlyVis && pt.mesh.visible === false) continue;
     var geo = pt.mesh.geometry, att = geo.getAttribute('position');
     if (!att) continue;
     var rec = { name: pt.data.name || '', material: pt.data.material || '', block: pt.data.block || '', kind: pt.data.kind, obj: !!pt.data.fromObj,
@@ -6108,6 +6466,8 @@ function __shRender() {
     showOpen: document.getElementById('sh-open').checked,
     rightDims: document.getElementById('sh-rdim').checked,
     levelsLeft: document.getElementById('sh-lvl').checked,
+    contourDims: document.getElementById('sh-cont').checked,
+    manualDims: __manGet(),
     axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr'],
     views: _e.shViews && _e.shViews.length ? _e.shViews : ['front', 'nofac', 'left', 'top']
   });
@@ -6127,6 +6487,7 @@ function __shSoon() {
 }
 function __sheetOpen() {
   if (!_e.parts || !_e.parts.length) { alert('Сначала откройте модель.'); return; }
+  document.getElementById('sh-vis').checked = __shStore('vis') === '1';
   _e.shParts = __shInput();
   var ttl = document.getElementById('title');
   document.getElementById('sh-title').value = ttl ? ttl.textContent.trim() : '';
@@ -6147,6 +6508,8 @@ function __sheetOpen() {
   document.getElementById('sh-open').checked = __shStore('open') !== '0';
   document.getElementById('sh-rdim').checked = __shStore('rdim') !== '0';
   document.getElementById('sh-lvl').checked = __shStore('lvl') === '1';
+  document.getElementById('sh-cont').checked = __shStore('cont') !== '0';
+  __manUI();
   document.getElementById('sheet').classList.add('on');
   __shRender();
 }
@@ -6195,6 +6558,18 @@ function __sheetInit() {
     __shStore('lvl', document.getElementById('sh-lvl').checked ? '1' : '0');
     __shRender();
   });
+  document.getElementById('sh-vis').addEventListener('change', function () {
+    __shStore('vis', document.getElementById('sh-vis').checked ? '1' : '0');
+    _e.shParts = __shInput();
+    __shRender();
+  });
+  document.getElementById('sh-cont').addEventListener('change', function () {
+    __shStore('cont', document.getElementById('sh-cont').checked ? '1' : '0');
+    __shRender();
+  });
+  document.getElementById('sh-man-undo').addEventListener('click', function () { __manGet().pop(); __manSave(); __manUI(); __shRender(); });
+  document.getElementById('sh-man-flip').addEventListener('click', function () { var a = __manGet(); if (a.length) { a[a.length - 1].flip = a[a.length - 1].flip ? 0 : 1; __manSave(); __shRender(); } });
+  document.getElementById('sh-man-clear').addEventListener('click', function () { _e.manDims = []; __manSave(); __manUI(); __shRender(); });
   var angBtns = document.querySelectorAll('.sh-ang'), abi;
   for (abi = 0; abi < angBtns.length; abi++) {
     angBtns[abi].addEventListener('click', function () {
@@ -6274,7 +6649,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.50",__VDATE="01.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.53",__VDATE="05.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
