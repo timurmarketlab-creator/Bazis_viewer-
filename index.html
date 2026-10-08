@@ -217,6 +217,30 @@
   #sheet .sh-grp .sh-angl{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink2);letter-spacing:.02em;}
   #sheet #sh-man{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);}
   #sheet #sh-man .btn{padding:3px 10px;font-size:12px;}
+  #sheet .sh-autow{position:relative;display:inline-flex;}
+  #sheet .sh-pop{position:absolute;top:100%;left:0;margin-top:4px;z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;box-shadow:0 6px 20px rgba(0,0,0,.16);min-width:210px;}
+  #sheet .sh-pop label{display:flex;flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding:3px 0;white-space:nowrap;}
+  #sheet .sh-pop .pt{font-size:10.5px;color:var(--ink2);padding-bottom:4px;}
+  #sheet.dtool .sh-wrap svg{cursor:crosshair;}
+  #dt-hint{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#1d1d1b;color:#fff;font-size:13px;padding:7px 14px;border-radius:9px;z-index:95;display:none;max-width:86vw;text-align:center;pointer-events:none;}
+  #sheet.dtool #dt-hint{display:block;}
+  #sheet.nobar .sh-bar{display:none!important;}
+  #sh-mini{position:fixed;left:14px;bottom:14px;z-index:97;display:none;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 5px;box-shadow:0 4px 16px rgba(0,0,0,.18);font-size:12px;}
+  #sheet.on #sh-mini{display:flex;}
+  #sh-mini button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;min-width:26px;}
+  #sh-mini button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  #sh-mini .sep{width:1px;height:18px;background:var(--line);margin:0 3px;}
+  #sh-zm-val{min-width:44px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink);}
+  #sheet .sh-wrap.spacepan,#sheet .sh-wrap.spacepan svg{cursor:grab!important;}
+  #sheet .sh-wrap.panning,#sheet .sh-wrap.panning svg{cursor:grabbing!important;}
+  #dt-edit{position:fixed;z-index:96;display:none;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 6px;box-shadow:0 4px 16px rgba(0,0,0,.18);font-size:12px;}
+  #dt-edit.on{display:flex;}
+  #dt-edit button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;min-width:26px;}
+  #dt-edit button.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  #dt-edit input{border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;width:96px;}
+  #dt-ov .dsel line,#dt-ov .dsel path{stroke:#B98A4B!important;}
+  #dt-ov .dsel text{fill:#B98A4B!important;}
+  #dt-ov .dsel circle{fill:#B98A4B!important;}
   #sheet .sh-bar label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--ink2);letter-spacing:.02em;}
   #sheet .sh-bar label.chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink);padding-bottom:9px;}
   #sheet .sh-angles{display:flex;gap:2px;}
@@ -244,6 +268,7 @@
     body>*:not(#sheet){display:none!important;}
     body>#sheet.on{display:block!important;position:static!important;background:#fff!important;overflow:visible!important;}
     #sheet .sh-bar{display:none!important;}
+    #dt-ov,#dt-hint,#dt-edit,#mtoast,#sh-mini{display:none!important;}
     #sheet .sh-wrap{overflow:visible!important;padding:0!important;}
     #sheet .paper{width:420mm!important;height:296.9mm!important;max-width:none!important;margin:0!important;box-shadow:none!important;overflow:hidden;
       break-after:page;page-break-after:always;break-inside:avoid;}
@@ -419,7 +444,7 @@
     <button class="btn" id="btn-showall">Показать всё</button>
     <button class="btn" id="btn-env" title="Стены, техника, окружение" style="display:none">Окружение</button>
     <button class="btn" id="btn-dims" title="Габариты изделия">Размеры</button>
-    <button class="btn" id="btn-meas" title="Линейка: нажмите две вершины, чтобы измерить расстояние (Esc — очистить, Backspace — убрать последний замер)">Линейка</button>
+    <button class="btn" id="btn-meas" title="Линейка: две точки с привязкой (конец, середина, нормаль к грани, ближайшая). Г / В / Н — по горизонтали / по вертикали экрана / вдоль. Esc — очистить, Backspace — убрать последний замер">Линейка</button>
     <button class="btn" id="btn-sheet" title="Чертёж A3: виды с размерами">Чертёж</button>
     <button class="btn" id="btn-link" style="display:none">Ссылка для клиента</button>
     <button class="btn primary" id="btn-open">Открыть файл</button>
@@ -522,6 +547,8 @@
           <label class="chk" title="Все углы, вырезы и концы пазов цепочками сверху и справа. Включается, когда на листе не больше 12 панелей: остальные детали скройте во вьювере"><input id="sh-cont" type="checkbox" checked>Размеры контура</label>
           <label class="chk" title="Вертикальная размерная цепочка справа: полки, швы, перекладины, планка пантографа"><input id="sh-rdim" type="checkbox" checked>Размеры справа</label>
           <label class="chk" title="Левая размерная цепочка по границам всех сплошных деталей вида (панели, стенды, стойки). Надписи и логотипы не учитываются. Заменяет прежнюю левую цепочку"><input id="sh-lvl" type="checkbox">Размеры слева</label>
+          <button type="button" class="btn" id="sh-dim-tool" title="Поставить размер: две точки с привязкой (конец, середина, центр, нормаль), затем положение линии. Г/В/Н — горизонтальный / вертикальный / вдоль. Esc — отмена">Размер</button>
+          <span class="sh-autow"><button type="button" class="btn" id="sh-auto-btn" title="Скрыть автоматические размеры на выбранных видах, чтобы они не мешали ручным">Авто ▾</button><div id="sh-auto-pop" class="sh-pop" style="display:none"></div></span>
           <span id="sh-man" style="display:none" title="Размеры, поставленные линейкой через «В чертёж»">Ручные: <b id="sh-man-n">0</b>
             <button type="button" class="btn" id="sh-man-undo" title="Убрать последний ручной размер">Отменить</button>
             <button type="button" class="btn" id="sh-man-flip" title="Перенести последний размер на другую сторону">Сторона</button>
@@ -541,6 +568,19 @@
     </div>
   </div>
   <div class="sh-wrap" id="sh-wrap"></div>
+  <div id="dt-hint"></div>
+  <div id="dt-edit"></div>
+  <div id="sh-mini">
+    <button type="button" id="sh-mini-bar" title="Скрыть / показать верхнюю панель (Tab)">▤</button>
+    <button type="button" id="sh-mini-tool" title="Инструмент «Размер»">Размер</button>
+    <span class="sep"></span>
+    <button type="button" id="sh-zm-out" title="Отдалить (колесо вниз при инструменте «Размер» или Ctrl+колесо)">−</button>
+    <span id="sh-zm-val" title="Масштаб листа на экране">100%</span>
+    <button type="button" id="sh-zm-in" title="Приблизить (колесо вверх при инструменте «Размер» или Ctrl+колесо)">+</button>
+    <button type="button" id="sh-zm-fit" title="Вписать в окно (0)">⤢</button>
+    <span class="sep"></span>
+    <button type="button" id="sh-mini-close" title="Закрыть чертёж (Esc)">✕</button>
+  </div>
 </div>
 <div id="lnk"><div class="box">
   <div class="t">Ссылка для клиента</div>
@@ -4471,16 +4511,20 @@ function __mvVerts(p) {
   p._mv = new Float32Array(out);
   return p._mv;
 }
-/* ближайшая к курсору вершина (в пределах 14 px); при близких расстояниях — та, что ближе к камере, и не закрытая другой деталью */
+/* ближайшая к курсору привязка (в пределах 14 px): конец (вершина), середина ребра, нормаль к ребру от первой точки, ближайшая точка ребра.
+   Из близких по расстоянию берётся ближняя к камере, не закрытая другой деталью */
 function __mvSnap(cx, cy) {
-  var r = Qt.domElement.getBoundingClientRect(), W = r.width, H = r.height, R = 14, cand = [], v = new D(), part;
+  var r = Qt.domElement.getBoundingClientRect(), W = r.width, H = r.height, R = 14, cand = [], v = new D(), part, M = _e.meas, cur = M && M.cur;
   Ht.updateMatrixWorld();
+  var A = new D(), B = new D(), T = new D();
+  function sc(p) { T.copy(p).project(Ht); return [(T.x + 1) / 2 * W, (1 - T.y) / 2 * H, T.z]; }
+  function addC(t, pen, w, px, py, z, ndc) { var d = Math.hypot(px - cx, py - cy); if (d <= R) cand.push({ t: t, d: d, c: d + pen, z: z, w: w, sx: px, sy: py, ndc: ndc }); }
   for (part of _e.parts) {
     if (!part.mesh || !part.mesh.visible) continue;
     var bb = part.mesh.geometry.boundingBox;
     if (!bb) continue;
     part.mesh.updateWorldMatrix(true, false);
-    var m = part.mesh.matrixWorld, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, q, any = false;
+    var m = part.mesh.matrixWorld, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, q;
     for (q = 0; q < 8; q++) {
       v.set(q & 1 ? bb.max.x : bb.min.x, q & 2 ? bb.max.y : bb.min.y, q & 4 ? bb.max.z : bb.min.z).applyMatrix4(m).project(Ht);
       var sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H;
@@ -4493,22 +4537,42 @@ function __mvSnap(cx, cy) {
       var wx = v.x, wy = v.y, wz = v.z;
       v.project(Ht);
       if (v.z >= 1) continue;
-      var px = (v.x + 1) / 2 * W, py = (1 - v.y) / 2 * H, d = Math.hypot(px - cx, py - cy);
-      if (d <= R) cand.push({ d: d, z: v.z, w: new D(wx, wy, wz), sx: px, sy: py, ndc: [v.x, v.y] });
+      addC('end', 0, new D(wx, wy, wz), (v.x + 1) / 2 * W, (1 - v.y) / 2 * H, v.z, [v.x, v.y]);
+    }
+    var eg = part.edges && part.edges.geometry ? part.edges.geometry.getAttribute('position') : null;
+    if (eg) {
+      for (i = 0; i + 1 < eg.count; i += 2) {
+        A.fromBufferAttribute(eg, i).applyMatrix4(m); B.fromBufferAttribute(eg, i + 1).applyMatrix4(m);
+        var a = sc(A), b = sc(B);
+        if (a[2] >= 1 && b[2] >= 1) continue;
+        if (Math.max(a[0], b[0]) < cx - R || Math.min(a[0], b[0]) > cx + R || Math.max(a[1], b[1]) < cy - R || Math.min(a[1], b[1]) > cy + R) continue;
+        var ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey;
+        if (L2 < 1) continue;
+        // середина
+        var Mw = A.clone().add(B).multiplyScalar(0.5), ms = sc(Mw);
+        addC('mid', 3, Mw, ms[0], ms[1], ms[2], [T.x, T.y]);
+        // ближайшая точка ребра к курсору
+        var t = Math.max(0, Math.min(1, ((cx - a[0]) * ex + (cy - a[1]) * ey) / L2)), Nw = A.clone().lerp(B, t), ns = sc(Nw);
+        addC('near', 9, Nw, ns[0], ns[1], ns[2], [T.x, T.y]);
+        // нормаль: основание перпендикуляра из первой точки на ребро (в 3D)
+        if (cur) {
+          var ab = B.clone().sub(A), tf = cur.clone().sub(A).dot(ab) / Math.max(ab.lengthSq(), 1e-9);
+          if (tf > 0.001 && tf < 0.999) { var Fw = A.clone().addScaledVector(ab, tf), fs = sc(Fw); addC('perp', 6, Fw, fs[0], fs[1], fs[2], [T.x, T.y]); }
+        }
+      }
     }
   }
   if (!cand.length) return null;
-  cand.sort(function (a, b) { return a.d - b.d; });
-  var d0 = cand[0].d, near = cand.filter(function (c) { return c.d <= d0 + 3; }).sort(function (a, b) { return a.z - b.z; });
+  cand.sort(function (p, q) { return p.c - q.c; });
+  var c0 = cand[0].c, near = cand.filter(function (c) { return c.c <= c0 + 3; }).sort(function (p, q) { return p.z - q.z; });
   var meshes = _e.wire ? [] : _e.parts.filter(function (p) { return p.mesh && p.mesh.visible; }).map(function (p) { return p.mesh; });
-  var list = near.concat(cand.filter(function (c) { return near.indexOf(c) < 0; })).slice(0, 12), k;
+  var list = near.concat(cand.filter(function (c) { return near.indexOf(c) < 0; })).slice(0, 14), k;
   for (k = 0; k < list.length; k++) {
     var c = list[k];
     if (meshes.length) {
       fu.setFromCamera({ x: c.ndc[0], y: c.ndc[1] }, Ht);
-      var hit = fu.intersectObjects(meshes, false);
-      var dist = fu.ray.origin.distanceTo(c.w);
-      if (hit.length && hit[0].distance < dist - 0.8) continue;   // вершина закрыта другой деталью
+      var hit = fu.intersectObjects(meshes, false), dist = fu.ray.origin.distanceTo(c.w);
+      if (hit.length && hit[0].distance < dist - 0.8) continue;   // закрыто другой деталью
     }
     return c;
   }
@@ -4516,41 +4580,60 @@ function __mvSnap(cx, cy) {
 }
 function __mvFmt(x) { return (Math.round(x * 10) / 10).toString().replace(".", ","); }
 function __mvScreen(p, W, H) { var v = p.clone().project(Ht); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H, v.z < 1]; }
+var __MV_MODE_NAME = { h: '\u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u043E', v: '\u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E', a: '\u0432\u0434\u043E\u043B\u044C' };
+function __mvCam() {
+  var e = Ht.matrixWorld.elements;
+  return { r: new D(e[0], e[1], e[2]).normalize(), u: new D(e[4], e[5], e[6]).normalize() };
+}
+/* значение замера в выбранном режиме и промежуточная точка «уголка» для Г / В */
+function __mvVal(a, b, mode, cam) {
+  var d = b.clone().sub(a), L = d.length();
+  if (mode === 'h') return { val: Math.abs(d.dot(cam.r)), c: a.clone().addScaledVector(cam.r, d.dot(cam.r)) };
+  if (mode === 'v') return { val: Math.abs(d.dot(cam.u)), c: a.clone().addScaledVector(cam.u, d.dot(cam.u)) };
+  return { val: L, c: null };
+}
 function __mvDraw() {
   var svg = document.getElementById("meas-svg"), ui = document.getElementById("meas-ui");
   if (!svg || !_e.meas) return;
   var r = Qt.domElement.getBoundingClientRect(), W = r.width, H = r.height, M = _e.meas, s = "", i;
   Ht.updateMatrixWorld();
+  var cam = __mvCam();
   function dot(p, col) { return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="4" fill="' + col + '" stroke="#fff" stroke-width="1.5"/>'; }
-  M.list.forEach(function (m, idx) {
-    var a = __mvScreen(m.a, W, H), b = __mvScreen(m.b, W, H);
-    if (!a[2] || !b[2]) return;
-    var dx = m.b.x - m.a.x, dy = m.b.y - m.a.y, dz = m.b.z - m.a.z, L = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    s += '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="#B98A4B" stroke-width="2"/>' + dot(a, "#B98A4B") + dot(b, "#B98A4B");
-    var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-    s += '<text x="' + mx.toFixed(1) + '" y="' + (my - 8).toFixed(1) + '" text-anchor="middle">' + __mvFmt(L) + ' \u043C\u043C</text>';
-    s += '<text class="sm" x="' + mx.toFixed(1) + '" y="' + (my + 6).toFixed(1) + '" text-anchor="middle">\u0394X ' + __mvFmt(Math.abs(dx)) + ' \u00B7 \u0394Y ' + __mvFmt(Math.abs(dy)) + ' \u00B7 \u0394Z ' + __mvFmt(Math.abs(dz)) + '</text>';
-    m._s = [mx, my];
-  });
-  if (M.cur) { var c = __mvScreen(M.cur, W, H); if (c[2]) s += dot(c, "#B98A4B"); }
+  function line(p, q, dash, w) { return '<line x1="' + p[0].toFixed(1) + '" y1="' + p[1].toFixed(1) + '" x2="' + q[0].toFixed(1) + '" y2="' + q[1].toFixed(1) + '" stroke="#B98A4B" stroke-width="' + (w || 2) + '"' + (dash ? ' stroke-dasharray="5 4"' : '') + '/>'; }
+  function one(a3, b3, mode, cm, label) {
+    var a = __mvScreen(a3, W, H), b = __mvScreen(b3, W, H);
+    if (!a[2] || !b[2]) return null;
+    var V = __mvVal(a3, b3, mode, cm), out = '', mid;
+    if (V.c) {
+      var c = __mvScreen(V.c, W, H);
+      out += line(a, c) + line(c, b, true, 1.5);
+      mid = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+    } else { out += line(a, b); mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }
+    var dx = b3.x - a3.x, dy = b3.y - a3.y, dz = b3.z - a3.z;
+    out += dot(a, "#B98A4B") + dot(b, "#B98A4B");
+    out += '<text x="' + mid[0].toFixed(1) + '" y="' + (mid[1] - 8).toFixed(1) + '" text-anchor="middle">' + __mvFmt(V.val) + ' \u043C\u043C' + (mode !== 'a' ? ' (' + __MV_MODE_NAME[mode] + ')' : '') + '</text>';
+    if (label) out += '<text class="sm" x="' + mid[0].toFixed(1) + '" y="' + (mid[1] + 6).toFixed(1) + '" text-anchor="middle">\u0394X ' + __mvFmt(Math.abs(dx)) + ' \u00B7 \u0394Y ' + __mvFmt(Math.abs(dy)) + ' \u00B7 \u0394Z ' + __mvFmt(Math.abs(dz)) + (mode !== 'a' ? ' \u00B7 \u043D\u0430\u043A\u043B\u043E\u043D\u043D\u043E ' + __mvFmt(Math.sqrt(dx * dx + dy * dy + dz * dz)) : '') + '</text>';
+    return { svg: out, mid: mid };
+  }
+  M.list.forEach(function (m) { var o = one(m.a, m.b, m.mode || 'a', m.cam || cam, true); if (o) { s += o.svg; m._s = o.mid; } });
+  if (M.cur) { var c0 = __mvScreen(M.cur, W, H); if (c0[2]) s += dot(c0, "#B98A4B"); }
   if (M.hover) {
-    var h = M.hover; s += '<circle cx="' + h.sx.toFixed(1) + '" cy="' + h.sy.toFixed(1) + '" r="7" fill="none" stroke="#B98A4B" stroke-width="2"/>';
-    if (M.cur) {
-      var a2 = __mvScreen(M.cur, W, H), dx2 = h.w.x - M.cur.x, dy2 = h.w.y - M.cur.y, dz2 = h.w.z - M.cur.z, L2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
-      s += '<line x1="' + a2[0].toFixed(1) + '" y1="' + a2[1].toFixed(1) + '" x2="' + h.sx.toFixed(1) + '" y2="' + h.sy.toFixed(1) + '" stroke="#B98A4B" stroke-width="1.5" stroke-dasharray="5 4"/>';
-      s += '<text x="' + ((a2[0] + h.sx) / 2).toFixed(1) + '" y="' + ((a2[1] + h.sy) / 2 - 8).toFixed(1) + '" text-anchor="middle">' + __mvFmt(L2) + ' \u043C\u043C</text>';
-    }
+    var h = M.hover;
+    s += '<circle cx="' + h.sx.toFixed(1) + '" cy="' + h.sy.toFixed(1) + '" r="7" fill="none" stroke="#B98A4B" stroke-width="2"/>';
+    s += '<text class="sm" x="' + (h.sx + 12).toFixed(1) + '" y="' + (h.sy - 9).toFixed(1) + '">' + (__MV_SNAP[h.t] || '') + '</text>';
+    if (M.cur) { var o2 = one(M.cur, h.w, M.mode || 'a', cam, false); if (o2) s += o2.svg.replace(/stroke-width="2"/g, 'stroke-width="1.5"'); }
   }
   svg.innerHTML = s;
   // кнопки под последним замером
   if (ui) {
-    var last = M.list[M.list.length - 1], b = ui.querySelector(".mbadge");
+    var last = M.list[M.list.length - 1], bd = ui.querySelector(".mbadge");
     if (last && last._s && M.badge !== false) {
-      if (!b) { b = document.createElement("div"); b.className = "mbadge"; ui.appendChild(b); __mvBadge(b); }
-      b.style.left = last._s[0] + "px"; b.style.top = (last._s[1] + 16) + "px";
-    } else if (b) b.remove();
+      if (!bd) { bd = document.createElement("div"); bd.className = "mbadge"; ui.appendChild(bd); __mvBadge(bd); }
+      bd.style.left = last._s[0] + "px"; bd.style.top = (last._s[1] + 16) + "px";
+    } else if (bd) bd.remove();
   }
 }
+var __MV_SNAP = { end: '\u041A\u043E\u043D\u0435\u0446', mid: '\u0421\u0435\u0440\u0435\u0434\u0438\u043D\u0430', perp: '\u041D\u043E\u0440\u043C\u0430\u043B\u044C', near: '\u0411\u043B\u0438\u0436\u0430\u0439\u0448\u0430\u044F' };
 function __mvBadge(b) {
   b.innerHTML = '<button type="button" data-a="add" title="Поставить этот размер на чертёж (на тот вид, с которого вы смотрите)">\u0412 \u0447\u0435\u0440\u0442\u0451\u0436</button><button type="button" data-a="del" title="Убрать этот замер">\u2715</button>';
   b.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
@@ -4599,12 +4682,19 @@ function __measInit() {
     var r = cv.getBoundingClientRect(), sn = __mvSnap(e.clientX - r.left, e.clientY - r.top), M = _e.meas;
     if (!sn) return;
     if (!M.cur) M.cur = sn.w.clone();
-    else { if (sn.w.distanceTo(M.cur) > 0.01) M.list.push({ a: M.cur.clone(), b: sn.w.clone() }); M.cur = null; }
+    else { if (sn.w.distanceTo(M.cur) > 0.01) M.list.push({ a: M.cur.clone(), b: sn.w.clone(), mode: M.mode || 'a', cam: __mvCam() }); M.cur = null; }
   });
   document.addEventListener("keydown", function (e) {
     if (!_e.measOn) return;
     var tg = e.target && e.target.tagName;
     if (tg === "INPUT" || tg === "TEXTAREA") return;
+    var kk = (e.key || "").toLowerCase(), cd = e.code, md = null;
+    if (!e.ctrlKey && !e.metaKey) { if (kk === "\u0433" || kk === "h" || cd === "KeyU") md = "h"; else if (kk === "\u0432" || kk === "v" || cd === "KeyD") md = "v"; else if (kk === "\u043D" || kk === "a" || cd === "KeyY") md = "a"; }
+    if (md) {
+      var Mm = _e.meas; Mm.mode = (Mm.mode === md && md !== "a") ? "a" : md;
+      if (!Mm.cur && Mm.list.length) { var lm = Mm.list[Mm.list.length - 1]; lm.mode = Mm.mode; lm.cam = __mvCam(); }
+      e.preventDefault(); return;
+    }
     if (e.key === "Escape") { _e.meas.list = []; _e.meas.cur = null; }
     else if (e.key === "Backspace" || e.key === "Delete") { if (_e.meas.cur) _e.meas.cur = null; else _e.meas.list.pop(); e.preventDefault(); }
   });
@@ -4643,15 +4733,41 @@ function __mvViewId(m) {
   return { id: c[0], exact: c[1] < 0.08 };
 }
 var __VIEWNAME = { front: "\u0421\u043F\u0435\u0440\u0435\u0434\u0438", back: "\u0421\u0437\u0430\u0434\u0438", left: "\u0421\u043B\u0435\u0432\u0430", right: "\u0421\u043F\u0440\u0430\u0432\u0430", top: "\u0421\u0432\u0435\u0440\u0445\u0443" };
+/* убедиться, что вид включён в чертёж: размер ставится на тот вид, где его поставили */
+function __shEnsureView(id) {
+  var list;
+  try { list = JSON.parse(__shStore('views') || 'null'); } catch (e) { list = null; }
+  if (!Array.isArray(list)) list = ['front', 'nofac', 'left', 'top'];
+  var added = list.indexOf(id) < 0;
+  if (added) list.push(id);
+  __shStore('views', JSON.stringify(list));
+  _e.shViews = list;
+  return added;
+}
 function __mvToSheet() {
   var M = _e.meas, last = M && M.list[M.list.length - 1];
   if (!last) return;
   if (_e.explode > 0) { __toast("\u0421\u0432\u0435\u0434\u0438\u0442\u0435 \u0440\u0430\u0437\u043B\u0451\u0442 \u0432 \u043D\u043E\u043B\u044C: \u0432 \u0440\u0430\u0437\u043B\u0451\u0442\u0435 \u043A\u043E\u043E\u0440\u0434\u0438\u043D\u0430\u0442\u044B \u043D\u0435 \u0441\u043E\u0432\u043F\u0430\u0434\u0443\u0442 \u0441 \u0447\u0435\u0440\u0442\u0451\u0436\u043E\u043C"); return; }
-  var vw = __mvViewId(last);
-  __manGet().push({ v: vw.id, a: [last.a.x, last.a.y, last.a.z], b: [last.b.x, last.b.y, last.b.z], flip: 0 });
-  __manSave(); __manUI();
+  var vw = __mvViewId(last), V = __shViews('fr')[vw.id];
+  var pa = [last.a.x, last.a.y, last.a.z], pb = [last.b.x, last.b.y, last.b.z];
+  var a = [__shDot(pa, V.r), __shDot(pa, V.u)], b = [__shDot(pb, V.r), __shDot(pb, V.u)];
+  var du = Math.abs(b[0] - a[0]), dw = Math.abs(b[1] - a[1]), L = Math.hypot(du, dw), kind;
+  var mode = last.mode || 'a';
+  if (vw.exact && mode === 'h') kind = 'h';
+  else if (vw.exact && mode === 'v') kind = 'v';
+  else {
+    var tilt = Math.atan2(dw, du) * 180 / Math.PI;
+    kind = (tilt < 8) ? 'h' : (tilt > 82 ? 'v' : 'a');
+  }
+  if ((kind === 'h' && du < 0.05) || (kind === 'v' && dw < 0.05)) kind = 'a';
+  var d = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), view: vw.id, k: kind, a: a, b: b, text: '' };
+  if (kind === 'h') { d.edge = 'b'; d.lane = 24; }
+  else if (kind === 'v') { d.edge = 'r'; d.lane = 24; }
+  else d.pos = 10;
+  __manGet().push(d); __manSave(); __manUI();
+  var added = __shEnsureView(vw.id);
   M.list.pop();
-  __toast("\u0420\u0430\u0437\u043C\u0435\u0440 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D \u043D\u0430 \u0432\u0438\u0434 \u00AB" + __VIEWNAME[vw.id] + "\u00BB. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u00AB\u0427\u0435\u0440\u0442\u0451\u0436\u00BB" + (vw.exact ? "" : ". \u041E\u0442\u0440\u0435\u0437\u043E\u043A \u043D\u0430\u043A\u043B\u043E\u043D\u043D\u044B\u0439: \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430 \u0435\u0433\u043E \u043F\u0440\u043E\u0435\u043A\u0446\u0438\u044F"));
+  __toast("\u0420\u0430\u0437\u043C\u0435\u0440 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D \u043D\u0430 \u0432\u0438\u0434 \u00AB" + __VIEWNAME[vw.id] + "\u00BB" + (added ? " (\u0432\u0438\u0434 \u0432\u043A\u043B\u044E\u0447\u0451\u043D \u0432 \u0447\u0435\u0440\u0442\u0451\u0436)" : "") + ". \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u00AB\u0427\u0435\u0440\u0442\u0451\u0436\u00BB \u2014 \u043F\u043E\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u043B\u0438\u043D\u0438\u0438 \u043C\u043E\u0436\u043D\u043E \u043F\u043E\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u043E\u043C \u00AB\u0420\u0430\u0437\u043C\u0435\u0440\u00BB" + (vw.exact ? "" : ". \u041E\u0442\u0440\u0435\u0437\u043E\u043A \u043D\u0430\u043A\u043B\u043E\u043D\u043D\u044B\u0439: \u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0430 \u0435\u0433\u043E \u043F\u0440\u043E\u0435\u043A\u0446\u0438\u044F"));
 }
 function __mkLink(){if(!_e.srcM)return"";let u=location.origin+location.pathname,q=new URLSearchParams;q.set("c",_e.srcM),_e.srcS&&q.set("s",_e.srcS);let t=document.getElementById("title"),d=String(_e.srcM).split("/").pop().replace(/\.(b3d|json|obj)$/i,"");t&&t.textContent&&t.textContent.trim()!==d&&q.set("t",t.textContent.trim());return u+"?"+q.toString()}
 function __linkOpen(){let v=__mkLink();if(!v)return;let d=document.getElementById("lnk"),i=document.getElementById("lnk-url");i.value=v,document.getElementById("lnk-msg").textContent="",d.classList.add("on");try{i.focus(),i.setSelectionRange(0,v.length)}catch(e){}}
@@ -5581,6 +5697,239 @@ function __shContourKeys(items, v, hAx, vAx) {
   });
   return { U: U, W: W };
 }
+function __shVisEdges(items0, vw, map, clip) {
+  var axo = false, items = clip ? __shObjClip(items0) : items0, v = vw.v, b = [-v[0], -v[1], -v[2]];
+  var tris = [], t, mi;
+  for (mi = 0; mi < items.length; mi++) {
+    var m = items[mi];
+    for (t = 0; t < m.nt; t++) {
+      if (!m.ok[t]) continue;
+      var nx = m.N[t * 3], ny = m.N[t * 3 + 1], nz = m.N[t * 3 + 2];
+      if (nx * v[0] + ny * v[1] + nz * v[2] >= -1e-6) continue;
+      var ia = m.T[t * 3] * 3, ib = m.T[t * 3 + 1] * 3, ic = m.T[t * 3 + 2] * 3;
+      var p3 = [[m.V[ia], m.V[ia + 1], m.V[ia + 2]], [m.V[ib], m.V[ib + 1], m.V[ib + 2]], [m.V[ic], m.V[ic + 1], m.V[ic + 2]]];
+      var sc = [map(p3[0]), map(p3[1]), map(p3[2])];
+      var dd = [b[0] * p3[0][0] + b[1] * p3[0][1] + b[2] * p3[0][2], b[0] * p3[1][0] + b[1] * p3[1][1] + b[2] * p3[1][2], b[0] * p3[2][0] + b[1] * p3[2][1] + b[2] * p3[2][2]];
+      tris.push({
+        p: p3, s: sc, d: dd, n: [nx, ny, nz], cd: (dd[0] + dd[1] + dd[2]) / 3,
+        x0: Math.min(sc[0][0], sc[1][0], sc[2][0]), x1: Math.max(sc[0][0], sc[1][0], sc[2][0]),
+        y0: Math.min(sc[0][1], sc[1][1], sc[2][1]), y1: Math.max(sc[0][1], sc[1][1], sc[2][1]),
+        col: axo ? __shShade(nx, ny, nz, m.facade, m.hw) : __shShade(vw.tn[0], vw.tn[1], vw.tn[2], m.facade, m.hw)
+      });
+    }
+  }
+  var n = tris.length, i, j;
+  if (!n) return [];
+  // сетка по экрану
+  var gx0 = 1e18, gy0 = 1e18, gx1 = -1e18, gy1 = -1e18;
+  tris.forEach(function (T) { if (T.x0 < gx0) gx0 = T.x0; if (T.y0 < gy0) gy0 = T.y0; if (T.x1 > gx1) gx1 = T.x1; if (T.y1 > gy1) gy1 = T.y1; });
+  var cell = Math.max(1, Math.max(gx1 - gx0, gy1 - gy0) / 50), gw = Math.ceil((gx1 - gx0) / cell) + 1, gh = Math.ceil((gy1 - gy0) / cell) + 1;
+  var grid = new Array(gw * gh);
+  function cells(x0, y0, x1, y1, fn) {
+    var a0 = Math.max(0, Math.floor((x0 - gx0) / cell)), a1 = Math.min(gw - 1, Math.floor((x1 - gx0) / cell));
+    var b0 = Math.max(0, Math.floor((y0 - gy0) / cell)), b1 = Math.min(gh - 1, Math.floor((y1 - gy0) / cell)), a, c;
+    for (a = a0; a <= a1; a++) for (c = b0; c <= b1; c++) fn(c * gw + a);
+  }
+  for (i = 0; i < n; i++) {
+    (function (idx) {
+      cells(tris[idx].x0, tris[idx].y0, tris[idx].x1, tris[idx].y1, function (ci) { (grid[ci] || (grid[ci] = [])).push(idx); });
+    })(i);
+  }
+  // линии: только видимые участки ребер
+  var seen = {}, out = [], eps = 0.05;
+  items.forEach(function (m) {
+    var q, e, z;
+    for (q = 0; q < m.E.length; q++) {
+      e = m.E[q];
+      var vis = false;
+      for (z = 0; z < e.t.length; z++) {
+        var tt = e.t[z];
+        if (!m.ok[tt] || (m.N[tt * 3] * v[0] + m.N[tt * 3 + 1] * v[1] + m.N[tt * 3 + 2] * v[2]) <= 1e-6) vis = true;
+      }
+      if (!vis) continue;
+      var A2 = map(e.a), B2 = map(e.b);
+      var len = Math.hypot(B2[0] - A2[0], B2[1] - A2[1]);
+      if (len < 0.03) continue;
+      // дубли определяем по настоящим 3D-координатам: на виде сверху разные рёбра друг под другом совпадают на экране
+      var k1 = Math.round(e.a[0] * 100) + ',' + Math.round(e.a[1] * 100) + ',' + Math.round(e.a[2] * 100);
+      var k2 = Math.round(e.b[0] * 100) + ',' + Math.round(e.b[1] * 100) + ',' + Math.round(e.b[2] * 100);
+      var key = k1 < k2 ? k1 + '|' + k2 : k2 + '|' + k1;
+      if (seen[key]) continue;
+      seen[key] = 1;
+      var dA = b[0] * e.a[0] + b[1] * e.a[1] + b[2] * e.a[2], dB = b[0] * e.b[0] + b[1] * e.b[1] + b[2] * e.b[2];
+      var hid = [], ex0 = Math.min(A2[0], B2[0]), ex1 = Math.max(A2[0], B2[0]), ey0 = Math.min(A2[1], B2[1]), ey1 = Math.max(A2[1], B2[1]);
+      var stampE = {};
+      cells(ex0, ey0, ex1, ey1, function (ci) {
+        var lst = grid[ci], w;
+        if (!lst) return;
+        for (w = 0; w < lst.length; w++) {
+          var T = tris[lst[w]];
+          if (stampE[lst[w]]) continue;
+          stampE[lst[w]] = 1;
+          if (T.x1 < ex0 - 0.01 || T.x0 > ex1 + 0.01 || T.y1 < ey0 - 0.01 || T.y0 > ey1 + 0.01) continue;
+          // ребро этого же треугольника не закрывает само себя
+          var ends = 0, c3;
+          for (c3 = 0; c3 < 3; c3++) {
+            var pp = T.p[c3];
+            if (Math.abs(pp[0] - e.a[0]) + Math.abs(pp[1] - e.a[1]) + Math.abs(pp[2] - e.a[2]) < 1e-3) ends++;
+            else if (Math.abs(pp[0] - e.b[0]) + Math.abs(pp[1] - e.b[1]) + Math.abs(pp[2] - e.b[2]) < 1e-3) ends++;
+          }
+          if (ends >= 2) continue;
+          // отрезок внутри экранного треугольника (Кирус-Бек)
+          var orr = (T.s[1][0] - T.s[0][0]) * (T.s[2][1] - T.s[0][1]) - (T.s[1][1] - T.s[0][1]) * (T.s[2][0] - T.s[0][0]);
+          if (Math.abs(orr) < 1e-9) continue;
+          var sg = orr > 0 ? 1 : -1, t0 = 0, t1 = 1, ok2 = true, c4;
+          for (c4 = 0; c4 < 3 && ok2; c4++) {
+            var s0 = T.s[c4], s1 = T.s[(c4 + 1) % 3], ex = s1[0] - s0[0], ey = s1[1] - s0[1];
+            var f0 = sg * (ex * (A2[1] - s0[1]) - ey * (A2[0] - s0[0]));
+            var f1 = sg * (ex * (B2[1] - s0[1]) - ey * (B2[0] - s0[0]));
+            var sl = f1 - f0;
+            if (Math.abs(sl) < 1e-12) { if (f0 < -1e-9) ok2 = false; }
+            else {
+              var ts = -f0 / sl;
+              if (sl > 0) { if (ts > t0) t0 = ts; } else { if (ts < t1) t1 = ts; }
+            }
+          }
+          if (!ok2 || t1 - t0 <= 1e-6) continue;
+          // глубина треугольника на экране — линейная функция координат
+          var e1x = T.s[1][0] - T.s[0][0], e1y = T.s[1][1] - T.s[0][1], e2x = T.s[2][0] - T.s[0][0], e2y = T.s[2][1] - T.s[0][1];
+          var dd1 = T.d[1] - T.d[0], dd2 = T.d[2] - T.d[0], det = e1x * e2y - e1y * e2x;
+          var gxx = (dd1 * e2y - dd2 * e1y) / det, gyy = (e1x * dd2 - e2x * dd1) / det;
+          function fDiff(tt2) {
+            var px = A2[0] + (B2[0] - A2[0]) * tt2, py = A2[1] + (B2[1] - A2[1]) * tt2;
+            return (dA + (dB - dA) * tt2) - (T.d[0] + gxx * (px - T.s[0][0]) + gyy * (py - T.s[0][1]));
+          }
+          var fa = fDiff(t0), fb = fDiff(t1);
+          if (fa < -eps && fb < -eps) hid.push([t0, t1]);
+          else if (fa < -eps || fb < -eps) {
+            var tc = t0 + (-eps - fa) / (fb - fa) * (t1 - t0);
+            if (fa < -eps) hid.push([t0, tc]); else hid.push([tc, t1]);
+          }
+        }
+      });
+      // видимое = всё, кроме закрытых отрезков
+      hid.sort(function (u, w) { return u[0] - w[0]; });
+      var pos2 = 0;
+      hid.forEach(function (h) {
+        if (h[0] > pos2 + 1e-6) out.push({ e: e, A2: A2, B2: B2, t0: pos2, t1: h[0] });
+        if (h[1] > pos2) pos2 = h[1];
+      });
+      if (pos2 < 1 - 1e-6) out.push({ e: e, A2: A2, B2: B2, t0: pos2, t1: 1 });
+    }
+  });
+  return out;
+}
+
+/* центры окружностей и дуг по видимым рёбрам (координаты вида, мм): замкнутые контуры отверстий, скругления, концы пазов */
+function __shCenters(segs) {
+  var q = function (x) { return Math.round(x * 100); }, adj = {}, pt = {}, out = [];
+  segs.forEach(function (sg) {
+    var ka = q(sg[0]) + ',' + q(sg[1]), kb = q(sg[2]) + ',' + q(sg[3]);
+    if (ka === kb) return;
+    pt[ka] = [sg[0], sg[1]]; pt[kb] = [sg[2], sg[3]];
+    (adj[ka] = adj[ka] || {})[kb] = 1; (adj[kb] = adj[kb] || {})[ka] = 1;
+  });
+  var keys = Object.keys(adj), seenE = {}, chains = [];
+  function nb(k) { return Object.keys(adj[k]); }
+  function ek(a, b) { return a < b ? a + '>' + b : b + '>' + a; }
+  function trace(start, next) {
+    var ch = [start], prev = start, cur = next;
+    seenE[ek(start, next)] = 1;
+    for (var guard = 0; guard < 5000; guard++) {
+      ch.push(cur);
+      var n = nb(cur);
+      if (n.length !== 2 || cur === start) break;
+      var nx = n[0] === prev ? n[1] : n[0];
+      if (seenE[ek(cur, nx)]) break;
+      seenE[ek(cur, nx)] = 1; prev = cur; cur = nx;
+    }
+    return ch;
+  }
+  keys.forEach(function (k) { if (nb(k).length !== 2) nb(k).forEach(function (n) { if (!seenE[ek(k, n)]) chains.push(trace(k, n)); }); });
+  keys.forEach(function (k) { if (nb(k).length === 2) nb(k).forEach(function (n) { if (!seenE[ek(k, n)]) chains.push(trace(k, n)); }); });
+  chains.forEach(function (ch) {
+    var closed = ch.length > 3 && ch[0] === ch[ch.length - 1];
+    var P = ch.map(function (k) { return pt[k]; });
+    if (closed) P.pop();
+    var n = P.length, i;
+    if (n < 4) return;
+    // поворот в вершине i (у незамкнутой цепочки концы без поворота)
+    function turn(i) {
+      var ip = i - 1, inx = i + 1;
+      if (closed) { ip = (i + n - 1) % n; inx = (i + 1) % n; }
+      else if (ip < 0 || inx >= n) return null;
+      var ax = P[i][0] - P[ip][0], ay = P[i][1] - P[ip][1], bx = P[inx][0] - P[i][0], by = P[inx][1] - P[i][1];
+      return Math.atan2(ax * by - ay * bx, ax * bx + ay * by);
+    }
+    var arcV = [];
+    for (i = 0; i < n; i++) { var tt = turn(i); arcV.push(tt !== null && Math.abs(tt) >= 0.006 && Math.abs(tt) <= 0.75 ? (tt > 0 ? 1 : -1) : 0); }
+    // участки подряд идущих «дуговых» вершин с одним знаком поворота
+    var runs = [], cur = null, start = 0;
+    if (closed && arcV.every(function (x) { return x !== 0 && x === arcV[0]; })) runs.push(P.slice());
+    else {
+      // у замкнутой цепочки начинаем с вершины, где участок прерывается
+      if (closed) { for (i = 0; i < n; i++) if (arcV[i] === 0) { start = i; break; } }
+      for (var c = 0; c < n; c++) {
+        var j = (start + c) % n, sgn = arcV[j];
+        if (sgn !== 0 && cur && cur.sgn === sgn) cur.pts.push(P[j]);
+        else {
+          if (cur && cur.pts.length) runs.push(cur.pts);
+          cur = sgn !== 0 ? { sgn: sgn, pts: [P[j]] } : null;
+        }
+      }
+      if (cur && cur.pts.length) runs.push(cur.pts);
+    }
+    runs.forEach(function (R0) {
+      if (R0.length < 4) return;
+      var lens = [];
+      for (var k = 0; k + 1 < R0.length; k++) lens.push(Math.hypot(R0[k + 1][0] - R0[k][0], R0[k + 1][1] - R0[k][1]));
+      var lmin = Math.min.apply(null, lens), lmax = Math.max.apply(null, lens);
+      if (lmax / Math.max(lmin, 1e-9) > 2.6) return;
+      var A = R0[0], B = R0[Math.floor(R0.length / 2)], C = R0[R0.length - 1];
+      var d = 2 * (A[0] * (B[1] - C[1]) + B[0] * (C[1] - A[1]) + C[0] * (A[1] - B[1]));
+      if (Math.abs(d) < 1e-9) return;
+      var ux = ((A[0] * A[0] + A[1] * A[1]) * (B[1] - C[1]) + (B[0] * B[0] + B[1] * B[1]) * (C[1] - A[1]) + (C[0] * C[0] + C[1] * C[1]) * (A[1] - B[1])) / d;
+      var uy = ((A[0] * A[0] + A[1] * A[1]) * (C[0] - B[0]) + (B[0] * B[0] + B[1] * B[1]) * (A[0] - C[0]) + (C[0] * C[0] + C[1] * C[1]) * (B[0] - A[0])) / d;
+      var R = Math.hypot(A[0] - ux, A[1] - uy);
+      if (R < 0.5 || R > 3000) return;
+      for (var m = 0; m < R0.length; m++) if (Math.abs(Math.hypot(R0[m][0] - ux, R0[m][1] - uy) - R) > Math.max(0.03, 0.012 * R)) return;
+      // та же окружность не дублируется (две стороны детали дают один контур)
+      for (var o = 0; o < out.length; o++) if (Math.hypot(out[o][0] - ux, out[o][1] - uy) < 0.05 && Math.abs(out[o][2] - R) < 0.05) return;
+      out.push([ux, uy, R]);
+    });
+  });
+  return out;
+}
+/* ручной размер в координатах вида: md = { view, k: 'h'|'v'|'a', a:[u,w], b:[u,w], pos | edge+lane, text }.
+   m2(u, w) -> точка на листе; bx — габарит чертежа на листе. Снаружи линия задаётся «рядом» (edge: b/t/l/r + lane — мм листа от габарита),
+   чтобы при смене масштаба ряды оставались на равном расстоянии от контура, как у автоматических цепочек */
+function __shManGeom(md, m2, bx) {
+  var a = md.a, b = md.b, k = md.k, g = { k: k, A: m2(a[0], a[1]), B: m2(b[0], b[1]) };
+  if (k === 'h') {
+    var y = md.edge === 'b' ? bx.yB + md.lane : md.edge === 't' ? bx.yT - md.lane : m2(0, md.pos)[1];
+    g.A2 = [g.A[0], y]; g.B2 = [g.B[0], y]; g.val = Math.abs(b[0] - a[0]);
+  } else if (k === 'v') {
+    var x = md.edge === 'l' ? bx.xL - md.lane : md.edge === 'r' ? bx.xR + md.lane : m2(md.pos, 0)[0];
+    g.A2 = [x, g.A[1]]; g.B2 = [x, g.B[1]]; g.val = Math.abs(b[1] - a[1]);
+  } else {
+    var dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, o = md.pos || 0;
+    g.A2 = m2(a[0] + nx * o, a[1] + ny * o); g.B2 = m2(b[0] + nx * o, b[1] + ny * o); g.val = L;
+  }
+  g.text = md.text ? String(md.text) : (Math.round(g.val * 10) / 10).toString().replace('.', ',');
+  return g;
+}
+function __shManDraw(g) {
+  function ext(P, P2) {
+    var dx = P2[0] - P[0], dy = P2[1] - P[1], L = Math.hypot(dx, dy);
+    if (L < 0.4) return '';
+    var ux = dx / L, uy = dy / L;
+    return __shLine(P[0] + ux * 1.0, P[1] + uy * 1.0, P2[0] + ux * 1.8, P2[1] + uy * 1.8, '.18');
+  }
+  // направление «от измеряемых точек к размерной линии» — туда же выносится цифра, если она не помещается
+  var mx = (g.A[0] + g.B[0]) / 2, my = (g.A[1] + g.B[1]) / 2, qx = (g.A2[0] + g.B2[0]) / 2, qy = (g.A2[1] + g.B2[1]) / 2;
+  var dl = Math.hypot(qx - mx, qy - my), od = dl > 0.3 ? [(qx - mx) / dl * 0.001, (qy - my) / dl * 0.001] : [0, -0.001];
+  return ext(g.A, g.A2) + ext(g.B, g.B2) + __shDim(g.A2, g.B2, od, g.text);
+}
 /* границы уровней -> отрезки между соседними уровнями (с краями диапазона) */
 function __shLevelsSegs(lv, lo, hi) {
   lv = lv.concat([lo, hi]).filter(function (v) { return v >= lo - 0.5 && v <= hi + 0.5; })
@@ -5723,11 +6072,12 @@ function __shGapDim(p0, p1, txt) {
    не поместился в общую строку целиком */
 var __SH_ROW_VIEWS = ['front', 'nofac', 'back', 'bnofac', 'left', 'lnofac', 'right', 'rnofac'];
 
-function __shPlan(W, H, D, views, rx, ty) {
-  rx = rx || 0; ty = ty || 0;
+function __shPlan(W, H, D, views, rx, ty, xm) {
+  rx = rx || 0; ty = ty || 0; xm = xm || {};
+  var xt = Math.max(0, (xm.t || 0) + 6 - (3 + ty)), xb = Math.max(0, (xm.b || 0) + 6 - 22), xl = Math.max(0, (xm.l || 0) + 6 - 24), xr = Math.max(0, (xm.r || 0) + 6 - (6 + rx));
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   A.w = A.x1 - A.x0; A.h = A.y1 - A.y0;
-  var g = 6, tH = 7, mL = 24, mR = 6, mT = 3 + ty, mB = 22;
+  var g = 6, tH = 7, mL = 24 + xl, mR = 6, mT = 3 + ty + xt, mB = 22 + xb;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   function cell(a, b, s) { return { w: a * s + mL + mR, h: b * s + tH + mT + mB }; }
   var rowIds = __SH_ROW_VIEWS.filter(function (v) { return views.indexOf(v) >= 0; });
@@ -5738,7 +6088,7 @@ function __shPlan(W, H, D, views, rx, ty) {
     if (id === 'top') c = cell(W, D, s);
     else if (id === 'left' || id === 'right' || id === 'lnofac' || id === 'rnofac') c = cell(D, H, s);
     else c = cell(W, H, s);
-    if (rx) c.w += rx;   // вертикальная цепочка справа
+    if (rx + xr) c.w += rx + xr;   // вертикальная цепочка справа и внешние ряды ручных размеров
     return c;
   }
   for (i = 0; i < dens.length; i++) {
@@ -5805,10 +6155,12 @@ function __shPlan(W, H, D, views, rx, ty) {
 function __shScaleLabel(den) { return '\u041C 1:' + String(den).replace('.', ','); }
 
 /* тот же лист A3, но один вид занимает всю рабочую область — для режима «по листу на вид» */
-function __shPlanOne(w, h, rx, ty) {
+function __shPlanOne(w, h, rx, ty, xm) {
+  xm = xm || {};
+  var xt = Math.max(0, (xm.t || 0) + 6 - (6 + (ty || 0))), xb = Math.max(0, (xm.b || 0) + 6 - 10), xl = Math.max(0, (xm.l || 0) + 6 - 24), xr = Math.max(0, (xm.r || 0) + 6 - (10 + (rx || 0)));
   var A = { x0: 17, y0: 36, x1: 403, y1: 263 };
   var Aw = A.x1 - A.x0, Ah = A.y1 - A.y0;
-  var mL = 24, mR = 10 + (rx || 0), mT = 6 + (ty || 0), mB = 10, tH = 7;
+  var mL = 24 + xl, mR = 10 + (rx || 0) + xr, mT = 6 + (ty || 0) + xt, mB = 10 + xb, tH = 7;
   var dens = [1, 2, 2.5, 4, 5, 8, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 300];
   var i, den = dens[dens.length - 1];
   for (i = 0; i < dens.length; i++) {
@@ -6100,7 +6452,7 @@ function __shBuild(parts, opt) {
   var Pall = (extras.length || userExtras.length) ? P.concat(extras, userExtras) : P;
   var noFacAll = (extras.length || userK.length) ? noFac.concat(extras, userK) : noFac;
   var onePerSheet = !!opt.onePerSheet;
-  var rightDims = opt.rightDims !== false, RX = 16, levelsLeft = !!opt.levelsLeft, TY = 13, contourOn;
+  var rightDims = opt.rightDims !== false, RX = 16, levelsLeft = !!opt.levelsLeft, TY = 13, contourOn, curSheet = 0, viewInfo = {};
   var finalDen = 1, finalTpl = 1;
 
   /* ----- лист 1 (или 1..4, если каждый вид на своём листе) ----- */
@@ -6151,6 +6503,7 @@ function __shBuild(parts, opt) {
       if (lsegs.length >= 2) { vChain = lsegs; vChainList = null; }
     }
     // «Размеры контура»: пока деталей на виде немного — все углы, вырезы и концы пазов цепочками сверху и справа
+    var hideA = !!(opt.hideAuto && opt.hideAuto[id]), rd = '', hingeC = [];
     var contourW = null, zTop = false, zRight = false;
     if (contourOn) {
       var cvis = items.filter(function (m) { return !m.hw || m.cnt; });
@@ -6158,15 +6511,15 @@ function __shBuild(parts, opt) {
         var ck = __shContourKeys(cvis, vw.v, hAx, vAx);
         var uS = __shLevelsSegs(ck.U, ext[0][hAx], ext[1][hAx]), wS = __shLevelsSegs(ck.W, ext[0][vAx], ext[1][vAx]);
         if (uS.length >= 2 && uS.length <= 40) {
-          r += __shChain(uS, function (b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], yT]; }, [0, -7], 2.5, [4, 7.4, 10.8]);
+          rd += __shChain(uS, function (b) { var q = [0, 0, 0]; q[hAx] = b; return [map(q)[0], yT]; }, [0, -7], 2.5, [4, 7.4, 10.8]);
           zTop = true;
         }
         if (wS.length >= 2 && wS.length <= 40) contourW = wS;
       }
     }
-    r += __shChain(hChain, hpt, [0, 7], hMin);
-    if (vChainList) { for (var vi = 0; vi < vChainList.length; vi++) r += __shChain(vChainList[vi], vpt, [-7, 0], 2.5); }
-    else r += __shChain(vChain, vpt, [-7, 0], 2.5);
+    rd += __shChain(hChain, hpt, [0, 7], hMin);
+    if (vChainList) { for (var vi = 0; vi < vChainList.length; vi++) rd += __shChain(vChainList[vi], vpt, [-7, 0], 2.5); }
+    else rd += __shChain(vChain, vpt, [-7, 0], 2.5);
     // вертикальная цепочка справа: уровни полок, швов, перекладин; на боковых видах и сверху — по крупным деталям крайней секции
     if (rightDims) {
       var rSegs = null, uAxR = 1;
@@ -6186,12 +6539,12 @@ function __shBuild(parts, opt) {
       }
       if (contourW) { rSegs = contourW; uAxR = vAx; }
       if (rSegs && rSegs.length >= 2) {
-        r += __shChain(rSegs, function (b) { var q = [0, 0, 0]; q[uAxR] = b; return [xR, map(q)[1]]; }, [7, 0], 2.5, [4, 7.4, 10.8]);
+        rd += __shChain(rSegs, function (b) { var q = [0, 0, 0]; q[uAxR] = b; return [xR, map(q)[1]]; }, [7, 0], 2.5, [4, 7.4, 10.8]);
         zRight = true;
       }
     }
-    r += __shDim([xL, yB], [xR, yB], [0, 16], String(Math.round(hv)));
-    r += __shDim([xL, yB], [xL, yT], [-16, 0], String(Math.round(vv)));
+    rd += __shDim([xL, yB], [xR, yB], [0, 16], String(Math.round(hv)));
+    rd += __shDim([xL, yB], [xL, yT], [-16, 0], String(Math.round(vv)));
     if ((id === 'nofac' || id === 'bnofac') && opt.inner !== false) {
       var i, j;
       // обычные проёмы (между сквозными перегородками); если их на листе нет — проёмы по модулям (кухни и составные изделия)
@@ -6202,10 +6555,12 @@ function __shBuild(parts, opt) {
         if ((col.b - col.a) * sLocal < 9) continue;
         for (j = 0; j < col.dims.length; j++) {
           var g = col.dims[j];
-          r += __shGapDim([cx, map([0, g[0], 0])[1]], [cx, map([0, g[1], 0])[1]], String(Math.round(g[1] - g[0])));
+          rd += __shGapDim([cx, map([0, g[0], 0])[1]], [cx, map([0, g[1], 0])[1]], String(Math.round(g[1] - g[0])));
         }
       }
     }
+    // автоматические размеры можно скрыть на конкретном виде («Авто» в панели «Размеры»), чтобы они не мешали ручным
+    if (hideA) { zTop = false; zRight = false; } else r += rd;
     // метки петель и открывания — на видах, откуда смотрят на лицо фасада (спереди, сзади, слева, справа), и только у видимых фасадов
     var MK = { front: [2, 1], back: [2, -1], left: [0, -1], right: [0, 1] }[id];   // [ось, на какой стороне камера]
     if (MK && (hinges.length || openings.length)) {
@@ -6221,7 +6576,10 @@ function __shBuild(parts, opt) {
         var inVis = facAll.some(function (m) { return __shThinAxis(m) === mAx && inFacade(hh, m) && __shFacVisible(m, P, mAx, mDir); });
         var inAny = facAll.some(function (m) { return inFacade(hh, m); });
         // спереди петли корпуса вне фасадов остаются, как раньше; на остальных видах — только петли видимых фасадов
-        if (inVis || (id === 'front' && !inAny)) r += __shHingeMark(map([hh.x, hh.y, hh.z]), Math.max(0.5, 17.5 * sLocal));
+        if (inVis || (id === 'front' && !inAny)) {
+          r += __shHingeMark(map([hh.x, hh.y, hh.z]), Math.max(0.5, 17.5 * sLocal));
+          hingeC.push([__shDot([hh.x, hh.y, hh.z], vw.r), __shDot([hh.x, hh.y, hh.z], vw.u)]);
+        }
       }
       for (i = 0; i < openings.length; i++) {
         var op = openings[i];
@@ -6244,10 +6602,12 @@ function __shBuild(parts, opt) {
       var placed = [], cxm = (xL + xR) / 2, cym = (yT + yB) / 2;
       // сверху всегда занято: подпись вида или цепочка контура
       var inZone = function (kind, c) {
+        if (hideA) return false;
         if (kind === 'h') return (c >= yB - 1 && c <= yB + 20) || (c >= yT - 24 && c <= yT + 1);
         return (c >= xL - 20 && c <= xL + 1) || (zRight && c >= xR - 1 && c <= xR + 20);
       };
       opt.manualDims.forEach(function (md) {
+        if (!md.a || md.a.length !== 3) return;   // новые размеры (в координатах вида) рисуются ниже
         // размер верен и на противоположном виде (измерили «сбоку» — он есть и на «слева»)
         var opp = { front: 'back', back: 'front', left: 'right', right: 'left' }[md.v];
         if (md.v !== baseId && opp !== baseId) return;
@@ -6290,6 +6650,21 @@ function __shBuild(parts, opt) {
         }
       });
     }
+    // ручные размеры нового типа: стоят только на том виде, где их поставили; положение линии задал пользователь
+    var m2 = function (u, w) { return [ox + (u - box[0]) * sLocal, oy + (box[3] - w) * sLocal]; };
+    var bxo = { xL: xL, xR: xR, yT: yT, yB: yB };
+    if (opt.manualDims) {
+      opt.manualDims.forEach(function (md) {
+        if (!md.a || md.a.length !== 2 || md.view !== id) return;
+        r += __shManDraw(__shManGeom(md, m2, bxo));
+      });
+    }
+    viewInfo[id] = {
+      sheet: curSheet, baseId: baseId, den: denLocal,
+      cell: { x: cell.x, y: cell.y, w: cell.w, h: cell.h },
+      ox: ox, oy: oy, s: sLocal, bx0: box[0], by1: box[3], box: box,
+      xL: xL, xR: xR, yT: yT, yB: yB, auto: !hideA, zTop: zTop, zRight: zRight, hinges: hingeC
+    };
     return r;
   }
   var nfTitle = facades ? '\u0412\u0438\u0434 \u0441\u043F\u0435\u0440\u0435\u0434\u0438 \u0431\u0435\u0437 \u0444\u0430\u0441\u0430\u0434\u043E\u0432'
@@ -6310,6 +6685,12 @@ function __shBuild(parts, opt) {
   };
   var viewOrder = ['front', 'nofac', 'back', 'bnofac', 'left', 'lnofac', 'right', 'rnofac', 'top'];
   var activeViews = viewOrder.filter(function (v) { return enabledViews.indexOf(v) >= 0; });
+  // внешние ряды ручных размеров (мм листа от габарита) — на них нужно оставить поля
+  var xm = { t: 0, b: 0, l: 0, r: 0 };
+  (opt.manualDims || []).forEach(function (md) {
+    if (!md.a || md.a.length !== 2 || !md.edge || activeViews.indexOf(md.view) < 0) return;
+    if (md.lane > xm[md.edge]) xm[md.edge] = md.lane;
+  });
   function viewNeed(id) {
     if (id === 'top') return [W, D];
     if (id === 'left' || id === 'right' || id === 'lnofac' || id === 'rnofac') return [D, H];
@@ -6321,13 +6702,15 @@ function __shBuild(parts, opt) {
   } else if (onePerSheet) {
     for (var vi4 = 0; vi4 < activeViews.length; vi4++) {
       var id4 = activeViews[vi4], vm4 = viewsMeta[id4], need4 = viewNeed(id4);
-      var pl1 = __shPlanOne(need4[0], need4[1], rightDims ? RX : 0, contourOn ? TY : 0);
+      curSheet = vi4;
+      var pl1 = __shPlanOne(need4[0], need4[1], rightDims ? RX : 0, contourOn ? TY : 0, xm);
       var out1 = ortho(id4, pl1.cell, vm4.items, vm4.title, pl1.s, pl1.m, pl1.den);
       frontSheets.push(__shFrame(opt, vi4 + 1, activeViews.length + 1, '1:' + String(pl1.den).replace('.', ','), out1));
       if (pl1.den > finalDen) finalDen = pl1.den;
     }
   } else {
-    var plan2 = __shPlan(W, H, D, activeViews, rightDims ? RX : 0, contourOn ? TY : 0), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
+    curSheet = 0;
+    var plan2 = __shPlan(W, H, D, activeViews, rightDims ? RX : 0, contourOn ? TY : 0, xm), s2 = plan2.s, C2 = plan2.cells, mg2 = plan2.m;
     finalDen = plan2.den; finalTpl = plan2.tpl;
     for (var vi5 = 0; vi5 < activeViews.length; vi5++) {
       var id5 = activeViews[vi5], vm5 = viewsMeta[id5];
@@ -6410,9 +6793,29 @@ function __shBuild(parts, opt) {
     axoSheets.push(__shFrame(opt, frontSheets.length + aai + 1, totalSheets, '\u0431/\u043C', body2));
   }
 
+  // привязки считаются по запросу: видимые участки рёбер вида в точных координатах (мм), центры окружностей и дуг, центры петель
+  function snapFor(id) {
+    var vi = viewInfo[id];
+    if (!vi) return null;
+    var vm = viewsMeta[id], vwx = VW[vi.baseId], mp = __shMapper(vwx, vi.box, vi.ox, vi.oy, vi.s);
+    var items = vm.items, hasObj = items.some(function (m) { return m.obj; });
+    var ed = __shVisEdges(items, vwx, mp, hasObj), segs = [], seen = {}, q = function (x) { return Math.round(x * 50); };
+    ed.forEach(function (E) {
+      var a = E.e.a, b = E.e.b;
+      var p0 = [a[0] + (b[0] - a[0]) * E.t0, a[1] + (b[1] - a[1]) * E.t0, a[2] + (b[2] - a[2]) * E.t0];
+      var p1 = [a[0] + (b[0] - a[0]) * E.t1, a[1] + (b[1] - a[1]) * E.t1, a[2] + (b[2] - a[2]) * E.t1];
+      var u0 = __shDot(p0, vwx.r), w0 = __shDot(p0, vwx.u), u1 = __shDot(p1, vwx.r), w1 = __shDot(p1, vwx.u);
+      if (Math.hypot(u1 - u0, w1 - w0) < 0.05) return;
+      var ka = q(u0) + ',' + q(w0), kb = q(u1) + ',' + q(w1), key = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+      if (seen[key]) return;
+      seen[key] = 1;
+      segs.push([u0, w0, u1, w1]);
+    });
+    return { segs: segs, centers: __shCenters(segs), hinges: vi.hinges };
+  }
   return { svg: sheet1, sheets: frontSheets.concat(axoSheets), den: finalDen, tpl: finalTpl, panels: P.length,
            facades: facades, hw: extras.length, hinges: hinges.length, openings: openings.length,
-           size: [Math.round(W), Math.round(H), Math.round(D)] };
+           size: [Math.round(W), Math.round(H), Math.round(D)], viewInfo: viewInfo, snap: snapFor };
 }
 /*SHEET-END*/
 
@@ -6468,18 +6871,568 @@ function __shRender() {
     levelsLeft: document.getElementById('sh-lvl').checked,
     contourDims: document.getElementById('sh-cont').checked,
     manualDims: __manGet(),
+    hideAuto: __autoGet(),
     axoAngles: _e.shAngles && _e.shAngles.length ? _e.shAngles : ['fr'],
     views: _e.shViews && _e.shViews.length ? _e.shViews : ['front', 'nofac', 'left', 'top']
   });
   _e.shSheets = res.sheets || [];
-  document.getElementById('sh-wrap').innerHTML = _e.shSheets.map(function (sv) {
+  _e.shRes = res;
+  if (_e.dt) _e.dt.cache = {};
+  var zw = document.getElementById('sh-wrap'), zsl = zw.scrollLeft, zst = zw.scrollTop;
+  zw.innerHTML = _e.shSheets.map(function (sv) {
     return '<div class="paper">' + sv + '</div>';
   }).join('');
+  __zmApply(); zw.scrollLeft = zsl; zw.scrollTop = zst;
   var info = document.getElementById('sh-info');
   if (!_e.shSheets.length) { info.textContent = 'В модели нет панелей для чертежа.'; return; }
   info.innerHTML = 'Панелей: ' + res.panels + ' \u00B7 фасадов: ' + res.facades + ' \u00B7 листов: ' + _e.shSheets.length + ' \u00B7 масштаб 1:' +
     String(res.den).replace('.', ',') +
     (res.facades ? '' : ' \u00B7 <b>фасады не найдены</b> \u2014 впишите слова из названия деталей');
+  if (typeof __dtAfterRender === 'function') __dtAfterRender();
+}
+
+/* ============ инструмент «Размер» в окне чертежа ============
+   Как в AutoCAD (РЗМЛИНЕЙНЫЙ): первая точка, вторая точка (привязки: конец, середина, центр, нормаль, ближайшая),
+   затем положение размерной линии; тип (горизонтальный, вертикальный, вдоль) выбирается по курсору или клавишами Г / В / Н.
+   Размер хранится в координатах вида (мм), поэтому остаётся на месте при смене масштаба и листа. */
+var __DT_STEP = 8, __DT_LANE0 = 24, __DT_LANE_FREE = 10;
+var __DT_NAMES = { end: '\u041A\u043E\u043D\u0435\u0446', mid: '\u0421\u0435\u0440\u0435\u0434\u0438\u043D\u0430', center: '\u0426\u0435\u043D\u0442\u0440', hinge: '\u0426\u0435\u043D\u0442\u0440', perp: '\u041D\u043E\u0440\u043C\u0430\u043B\u044C', near: '\u0411\u043B\u0438\u0436\u0430\u0439\u0448\u0430\u044F' };
+function __dtState() {
+  if (!_e.dt) _e.dt = { on: false, stage: 0, p1: null, p2: null, forced: null, hover: null, sel: null, drag: null, cache: {}, raf: 0, cur: null, hideSnap: false };
+  return _e.dt;
+}
+function __dtM2(info) { return function (u, w) { return [info.ox + (u - info.bx0) * info.s, info.oy + (info.by1 - w) * info.s]; }; }
+function __dtInv(info, x, y) { return [info.bx0 + (x - info.ox) / info.s, info.by1 - (y - info.oy) / info.s]; }
+function __dtBox(info) { return { xL: info.xL, xR: info.xR, yT: info.yT, yB: info.yB }; }
+function __dtSvgs() { return document.querySelectorAll('#sh-wrap svg'); }
+function __dtPoint(ev) {
+  var svg = ev.target && ev.target.closest ? ev.target.closest('svg') : null;
+  if (!svg || !svg.getScreenCTM) return null;
+  var m = svg.getScreenCTM(), pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  var p = pt.matrixTransform(m.inverse()), all = __dtSvgs(), si = Array.prototype.indexOf.call(all, svg);
+  return { svg: svg, sheet: si, x: p.x, y: p.y, k: m.a || 1 };
+}
+function __dtViewAt(sheet, x, y) {
+  var vi = _e.shRes && _e.shRes.viewInfo, id;
+  if (!vi) return null;
+  for (id in vi) {
+    var c = vi[id].cell;
+    if (vi[id].sheet === sheet && x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return id;
+  }
+  return null;
+}
+function __dtData(id) {
+  var dt = __dtState();
+  if (dt.cache[id]) return dt.cache[id];
+  var sn = _e.shRes.snap(id), info = _e.shRes.viewInfo[id], m2 = __dtM2(info), cell = 6, grid = {};
+  var segs = sn.segs.map(function (s) { return { A: m2(s[0], s[1]), B: m2(s[2], s[3]), uw: s }; });
+  segs.forEach(function (sg, i) {
+    var x0 = Math.min(sg.A[0], sg.B[0]), x1 = Math.max(sg.A[0], sg.B[0]), y0 = Math.min(sg.A[1], sg.B[1]), y1 = Math.max(sg.A[1], sg.B[1]), gx, gy;
+    for (gx = Math.floor(x0 / cell); gx <= Math.floor(x1 / cell); gx++) for (gy = Math.floor(y0 / cell); gy <= Math.floor(y1 / cell); gy++) {
+      var key = gx + ',' + gy;
+      (grid[key] || (grid[key] = [])).push(i);
+    }
+  });
+  var ctr = sn.centers.map(function (c) { return { P: m2(c[0], c[1]), uw: [c[0], c[1]], t: 'center' }; })
+    .concat((sn.hinges || []).map(function (h) { return { P: m2(h[0], h[1]), uw: [h[0], h[1]], t: 'hinge' }; }));
+  dt.cache[id] = { segs: segs, grid: grid, cell: cell, ctr: ctr };
+  return dt.cache[id];
+}
+/* ближайшая привязка к курсору (x, y — мм листа); tol — радиус в мм листа; p1 — первая точка (для «Нормали») */
+function __dtSnap(id, x, y, tol, k, p1) {
+  var D = __dtData(id), cand = [], seen = {}, gx, gy, cs = D.cell;
+  function add(t, P, uw, d, pen) { cand.push({ t: t, x: P[0], y: P[1], uw: uw, c: d * k + pen }); }
+  for (gx = Math.floor((x - tol) / cs); gx <= Math.floor((x + tol) / cs); gx++) for (gy = Math.floor((y - tol) / cs); gy <= Math.floor((y + tol) / cs); gy++) {
+    var lst = D.grid[gx + ',' + gy], q;
+    if (!lst) continue;
+    for (q = 0; q < lst.length; q++) {
+      var i = lst[q];
+      if (seen[i]) continue;
+      seen[i] = 1;
+      var sg = D.segs[i], A = sg.A, B = sg.B, uw = sg.uw, dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy, d;
+      d = Math.hypot(A[0] - x, A[1] - y); if (d <= tol) add('end', A, [uw[0], uw[1]], d, 0);
+      d = Math.hypot(B[0] - x, B[1] - y); if (d <= tol) add('end', B, [uw[2], uw[3]], d, 0);
+      if (L2 < 1e-9) continue;
+      var M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+      d = Math.hypot(M[0] - x, M[1] - y); if (d <= tol) add('mid', M, [(uw[0] + uw[2]) / 2, (uw[1] + uw[3]) / 2], d, 4);
+      var t = Math.max(0, Math.min(1, ((x - A[0]) * dx + (y - A[1]) * dy) / L2)), N = [A[0] + dx * t, A[1] + dy * t];
+      d = Math.hypot(N[0] - x, N[1] - y);
+      if (d <= tol) add('near', N, [uw[0] + (uw[2] - uw[0]) * t, uw[1] + (uw[3] - uw[1]) * t], d, 9);
+      if (p1) {
+        var tf = ((p1.x - A[0]) * dx + (p1.y - A[1]) * dy) / L2;
+        if (tf > 0.001 && tf < 0.999) {
+          var F = [A[0] + dx * tf, A[1] + dy * tf], df = Math.hypot(F[0] - x, F[1] - y);
+          if (df <= tol) add('perp', F, [uw[0] + (uw[2] - uw[0]) * tf, uw[1] + (uw[3] - uw[1]) * tf], df, 6);
+        }
+      }
+    }
+  }
+  D.ctr.forEach(function (c) { var d = Math.hypot(c.P[0] - x, c.P[1] - y); if (d <= tol) add(c.t, c.P, c.uw, d, 2); });
+  if (!cand.length) return null;
+  cand.sort(function (a, b) { return a.c - b.c; });
+  return cand[0];
+}
+function __dtSpan(d) { return d.k === 'h' ? [Math.min(d.a[0], d.b[0]), Math.max(d.a[0], d.b[0])] : [Math.min(d.a[1], d.b[1]), Math.max(d.a[1], d.b[1])]; }
+function __dtOverlap(a, b) { return a[0] < b[1] - 0.5 && a[1] > b[0] + 0.5; }
+/* положение размерной линии по курсору: снаружи — рядом с габаритом (ряды через 8 мм), внутри — по координате вида */
+function __dtPlace(info, d, cur, alt, others) {
+  delete d.pos; delete d.edge; delete d.lane;
+  var m2 = __dtM2(info), base = info.auto ? __DT_LANE0 : __DT_LANE_FREE, i, guard;
+  if (d.k === 'h' || d.k === 'v') {
+    var horiz = d.k === 'h', c = horiz ? cur.y : cur.x, lo = horiz ? info.yT : info.xL, hi = horiz ? info.yB : info.xR;
+    var same = others.filter(function (o) { return o.k === d.k; });
+    if (c > hi + 1 || c < lo - 1) {
+      d.edge = c > hi + 1 ? (horiz ? 'b' : 'r') : (horiz ? 't' : 'l');
+      var lane = c > hi + 1 ? c - hi : lo - c;
+      var onEdge = same.filter(function (o) { return o.edge === d.edge; });
+      if (!alt) {
+        var cands = [];
+        for (i = 0; i < 7; i++) cands.push(base + __DT_STEP * i);
+        onEdge.forEach(function (o) { cands.push(o.lane, o.lane + __DT_STEP, o.lane - __DT_STEP); });
+        var bestc = null;
+        cands.forEach(function (cn) { if (cn > 1 && Math.abs(cn - lane) <= 3 && (bestc === null || Math.abs(cn - lane) < Math.abs(bestc - lane))) bestc = cn; });
+        if (bestc !== null) lane = bestc;
+        if (info.auto && lane > 1 && lane < base - 1) lane = base;   // не ложимся на автоматические размеры: уходим на первый свободный ряд
+        guard = 0;
+        while (guard++ < 12 && onEdge.some(function (o) { return Math.abs(o.lane - lane) < 1.5 && __dtOverlap(__dtSpan(o), __dtSpan(d)); })) lane += __DT_STEP;
+      }
+      d.lane = Math.round(lane * 10) / 10;
+    } else {
+      var inn = same.filter(function (o) { return !o.edge; });
+      var pos = horiz ? __dtInv(info, 0, c)[1] : __dtInv(info, c, 0)[0];
+      if (!alt) {
+        var cp = horiz ? m2(0, pos)[1] : m2(pos, 0)[0], best = null;
+        inn.forEach(function (o) {
+          var po = horiz ? m2(0, o.pos)[1] : m2(o.pos, 0)[0];
+          [po, po + __DT_STEP, po - __DT_STEP].forEach(function (pc) { if (Math.abs(pc - cp) <= 3 && (best === null || Math.abs(pc - cp) < Math.abs(best - cp))) best = pc; });
+        });
+        if (best !== null) pos = horiz ? __dtInv(info, 0, best)[1] : __dtInv(info, best, 0)[0];
+        guard = 0;
+        while (guard++ < 12 && inn.some(function (o) {
+          var pa = horiz ? m2(0, o.pos)[1] : m2(o.pos, 0)[0], pb = horiz ? m2(0, pos)[1] : m2(pos, 0)[0];
+          return Math.abs(pa - pb) < 1.5 && __dtOverlap(__dtSpan(o), __dtSpan(d));
+        })) {
+          var pcur = horiz ? m2(0, pos)[1] : m2(pos, 0)[0];
+          pos = horiz ? __dtInv(info, 0, pcur + (c >= pcur ? __DT_STEP : -__DT_STEP))[1] : __dtInv(info, pcur + (c >= pcur ? __DT_STEP : -__DT_STEP), 0)[0];
+        }
+      }
+      d.pos = Math.round(pos * 100) / 100;
+    }
+  } else {
+    var uw = __dtInv(info, cur.x, cur.y), dx = d.b[0] - d.a[0], dy = d.b[1] - d.a[1], L = Math.hypot(dx, dy) || 1;
+    d.pos = Math.round(((uw[0] - d.a[0]) * (-dy / L) + (uw[1] - d.a[1]) * (dx / L)) * 100) / 100;
+  }
+}
+/* тип по положению курсора относительно двух точек (как в AutoCAD): выше/ниже — горизонтальный, левее/правее — вертикальный */
+function __dtKind(p1, p2, cur, forced) {
+  var x0 = Math.min(p1.x, p2.x), x1 = Math.max(p1.x, p2.x), y0 = Math.min(p1.y, p2.y), y1 = Math.max(p1.y, p2.y);
+  var a = p1.uw, b = p2.uw, kind = forced;
+  if (!kind) {
+    var ox = Math.max(x0 - cur.x, cur.x - x1, 0), oy = Math.max(y0 - cur.y, cur.y - y1, 0);
+    kind = (ox === 0 && oy === 0) ? (Math.abs(cur.y - (y0 + y1) / 2) >= Math.abs(cur.x - (x0 + x1) / 2) ? 'h' : 'v') : (oy >= ox ? 'h' : 'v');
+  }
+  if (kind === 'h' && Math.abs(b[0] - a[0]) < 0.05) kind = Math.abs(b[1] - a[1]) < 0.05 ? 'a' : 'v';
+  if (kind === 'v' && Math.abs(b[1] - a[1]) < 0.05) kind = Math.abs(b[0] - a[0]) < 0.05 ? 'a' : 'h';
+  return kind;
+}
+function __dtDims(view, except) {
+  return __manGet().filter(function (d) { return d.k && d.view === view && d.id !== except; });
+}
+function __dtFind(id) { var a = __manGet(), i; for (i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+function __dtFlip(d) {
+  if (!d.k) { d.flip = d.flip ? 0 : 1; return; }
+  if (d.k === 'a') { d.pos = -(d.pos || 0); return; }
+  if (d.edge) { d.edge = { b: 't', t: 'b', l: 'r', r: 'l' }[d.edge]; return; }
+  var mid = d.k === 'h' ? (d.a[1] + d.b[1]) / 2 : (d.a[0] + d.b[0]) / 2;
+  d.pos = 2 * mid - d.pos;
+}
+function __dtGeom(d) {
+  var info = _e.shRes.viewInfo[d.view];
+  return info ? { g: __shManGeom(d, __dtM2(info), __dtBox(info)), info: info } : null;
+}
+function __dtSegDist(P, A, B) {
+  var dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy, t = L2 > 0 ? Math.max(0, Math.min(1, ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / L2)) : 0;
+  return Math.hypot(P[0] - (A[0] + dx * t), P[1] - (A[1] + dy * t));
+}
+function __dtHit(view, x, y, tol) {
+  var best = null, bd = tol;
+  __dtDims(view).forEach(function (d) {
+    var G = __dtGeom(d);
+    if (!G) return;
+    var g = G.g, dd = Math.min(__dtSegDist([x, y], g.A2, g.B2), Math.hypot((g.A2[0] + g.B2[0]) / 2 - x, (g.A2[1] + g.B2[1]) / 2 - y) - 3);
+    if (dd < bd) { bd = dd; best = d; }
+  });
+  return best;
+}
+/* ---- рисование поверх листа ---- */
+function __dtMark(t, x, y, k) {
+  k = k || 3;
+  var r = 5.5 / k, c = '#B98A4B', sw = 1.5 / k, s = '';
+  if (t === 'end') s = '<rect x="' + (x - r) + '" y="' + (y - r) + '" width="' + (2 * r) + '" height="' + (2 * r) + '" fill="none" stroke="' + c + '" stroke-width="' + sw + '"/>';
+  else if (t === 'mid') s = '<path d="M' + (x - r) + ' ' + (y + r * 0.8) + 'L' + (x + r) + ' ' + (y + r * 0.8) + 'L' + x + ' ' + (y - r * 1.1) + 'Z" fill="none" stroke="' + c + '" stroke-width="' + sw + '"/>';
+  else if (t === 'center' || t === 'hinge') s = '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="none" stroke="' + c + '" stroke-width="' + sw + '"/>';
+  else if (t === 'perp') s = '<path d="M' + (x - r) + ' ' + (y - r) + 'L' + (x - r) + ' ' + (y + r) + 'L' + (x + r) + ' ' + (y + r) + 'M' + (x - r) + ' ' + y + 'L' + x + ' ' + y + 'L' + x + ' ' + (y + r) + '" fill="none" stroke="' + c + '" stroke-width="' + sw + '"/>';
+  else s = '<path d="M' + (x - r) + ' ' + (y - r) + 'L' + (x + r) + ' ' + (y - r) + 'L' + (x - r) + ' ' + (y + r) + 'L' + (x + r) + ' ' + (y + r) + 'Z" fill="none" stroke="' + c + '" stroke-width="' + sw + '"/>';
+  return s + '<text x="' + (x + r * 1.7) + '" y="' + (y - r * 1.3) + '" font-size="' + (11.5 / k) + '" fill="#5c4a2a" stroke="#fff" stroke-width="' + (3 / k) + '" paint-order="stroke">' + (__DT_NAMES[t] || '') + '</text>';
+}
+function __dtOverlay() {
+  var dt = __dtState(), svgs = __dtSvgs(), i, ns = 'http://www.w3.org/2000/svg';
+  for (i = 0; i < svgs.length; i++) { var old = svgs[i].querySelector('#dt-ov'); if (old) old.remove(); }
+  if (!_e.shRes || !_e.shRes.viewInfo) return;
+  var per = {};
+  function put(sheet, str) { (per[sheet] = per[sheet] || []).push(str); }
+  // выбранный размер — акцентным цветом (или его перетаскиваемая копия)
+  if (dt.sel) {
+    var d = dt.dragTmp && dt.dragTmp.id === dt.sel ? dt.dragTmp : __dtFind(dt.sel), G = d ? __dtGeom(d) : null;
+    if (G) put(G.info.sheet, '<g class="dsel">' + __shManDraw(G.g) + '</g>');
+  }
+  if (dt.on && dt.view) {
+    var info = _e.shRes.viewInfo[dt.view];
+    if (info) {
+      var hov = dt.hover;
+      if (dt.stage >= 1 && dt.p1) put(info.sheet, __dtMark('end', dt.p1.x, dt.p1.y, dt.k));
+      if (dt.stage >= 2 && dt.p2) put(info.sheet, __dtMark('end', dt.p2.x, dt.p2.y, dt.k));
+      if (dt.stage === 1 && dt.p1 && hov) put(info.sheet, '<line x1="' + dt.p1.x + '" y1="' + dt.p1.y + '" x2="' + hov.x + '" y2="' + hov.y + '" stroke="#B98A4B" stroke-width=".25" stroke-dasharray="1.2 1"/>');
+      if (dt.stage === 2 && dt.p1 && dt.p2 && dt.cur) {
+        var nd = __dtDraft();
+        if (nd) { var g2 = __shManGeom(nd, __dtM2(info), __dtBox(info)); put(info.sheet, '<g opacity=".72">' + __shManDraw(g2) + '</g>'); }
+      } else if (hov && dt.stage < 2) put(info.sheet, __dtMark(hov.t, hov.x, hov.y, dt.k));
+    }
+  }
+  for (i = 0; i < svgs.length; i++) {
+    if (!per[i]) continue;
+    var g = document.createElementNS(ns, 'g');
+    g.setAttribute('id', 'dt-ov'); g.setAttribute('pointer-events', 'none');
+    g.innerHTML = per[i].join('');
+    svgs[i].appendChild(g);
+  }
+}
+function __dtDraft() {
+  var dt = __dtState(), info = dt.view && _e.shRes.viewInfo[dt.view];
+  if (!info || !dt.p1 || !dt.p2 || !dt.cur) return null;
+  var d = { id: 0, view: dt.view, k: __dtKind(dt.p1, dt.p2, dt.cur, dt.forced), a: dt.p1.uw.slice(), b: dt.p2.uw.slice(), text: '' };
+  __dtPlace(info, d, dt.cur, dt.alt, __dtDims(dt.view));
+  return d;
+}
+function __dtHint() {
+  var dt = __dtState(), h = document.getElementById('dt-hint'), t, tail = ' \u00B7 \u043A\u043E\u043B\u0435\u0441\u043E \u2014 \u043C\u0430\u0441\u0448\u0442\u0430\u0431 \u00B7 \u0421\u041A\u041C / \u041F\u0440\u043E\u0431\u0435\u043B \u2014 \u0441\u0434\u0432\u0438\u0433 \u00B7 Tab \u2014 \u043F\u0430\u043D\u0435\u043B\u044C';
+  if (!h) return;
+  if (dt.sel) t = '\u0420\u0430\u0437\u043C\u0435\u0440 \u0432\u044B\u0431\u0440\u0430\u043D: \u0442\u044F\u043D\u0438\u0442\u0435 \u043B\u0438\u043D\u0438\u044E \u00B7 Del \u2014 \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u00B7 \u0413 / \u0412 / \u041D \u2014 \u0442\u0438\u043F \u00B7 Esc \u2014 \u0441\u043D\u044F\u0442\u044C \u0432\u044B\u0431\u043E\u0440';
+  else if (dt.stage === 0) t = '\u0420\u0430\u0437\u043C\u0435\u0440: \u0443\u043A\u0430\u0436\u0438\u0442\u0435 \u043F\u0435\u0440\u0432\u0443\u044E \u0442\u043E\u0447\u043A\u0443 (\u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430: \u043A\u043E\u043D\u0435\u0446, \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0430, \u0446\u0435\u043D\u0442\u0440, \u043D\u043E\u0440\u043C\u0430\u043B\u044C) \u00B7 \u043A\u043B\u0438\u043A \u043F\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0443 \u2014 \u0432\u044B\u0431\u0440\u0430\u0442\u044C \u00B7 Esc \u2014 \u0432\u044B\u0445\u043E\u0434';
+  else if (dt.stage === 1) t = '\u0412\u0442\u043E\u0440\u0430\u044F \u0442\u043E\u0447\u043A\u0430 \u00B7 \u0413 \u2014 \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0439, \u0412 \u2014 \u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u044B\u0439, \u041D \u2014 \u0432\u0434\u043E\u043B\u044C \u00B7 Esc \u2014 \u043E\u0442\u043C\u0435\u043D\u0430';
+  else t = '\u041F\u043E\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u043D\u043E\u0439 \u043B\u0438\u043D\u0438\u0438 \u2014 \u043A\u043B\u0438\u043A \u0434\u043B\u044F \u0443\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0438 \u00B7 \u0442\u0438\u043F \u043F\u043E \u043A\u0443\u0440\u0441\u043E\u0440\u0443, \u0413 / \u0412 / \u041D \u2014 \u043F\u0440\u0438\u043D\u0443\u0434\u0438\u0442\u0435\u043B\u044C\u043D\u043E \u00B7 Alt \u2014 \u0431\u0435\u0437 \u043F\u0440\u0438\u043B\u0438\u043F\u0430\u043D\u0438\u044F' + (dt.forced ? ' \u00B7 \u0442\u0438\u043F: ' + { h: '\u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0439', v: '\u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u044B\u0439', a: '\u0432\u0434\u043E\u043B\u044C' }[dt.forced] : '');
+  h.textContent = t + tail;
+}
+function __dtSet(on) {
+  var dt = __dtState();
+  dt.on = !!on; dt.stage = 0; dt.p1 = dt.p2 = null; dt.forced = null; dt.hover = null; dt.sel = null; dt.drag = null; dt.dragTmp = null;
+  var sh = document.getElementById('sheet'), b = document.getElementById('sh-dim-tool');
+  if (sh) sh.classList.toggle('dtool', dt.on);
+  if (b) b.classList.toggle('on', dt.on);
+  var mt = document.getElementById('sh-mini-tool'); if (mt) mt.classList.toggle('on', dt.on);
+  __dtHint(); __dtOverlay(); __dtEditShow();
+}
+/* ---- панель правки выбранного размера ---- */
+function __dtEditShow() {
+  var dt = __dtState(), p = document.getElementById('dt-edit');
+  if (!p) return;
+  var d = dt.sel ? __dtFind(dt.sel) : null, G = d ? __dtGeom(d) : null;
+  if (!d || !G) { p.classList.remove('on'); return; }
+  var svg = __dtSvgs()[G.info.sheet];
+  if (!svg) { p.classList.remove('on'); return; }
+  var m = svg.getScreenCTM(), pt = svg.createSVGPoint();
+  var rx = G.g.A2[0] >= G.g.B2[0] ? G.g.A2 : G.g.B2;
+  pt.x = rx[0]; pt.y = rx[1];
+  var c = pt.matrixTransform(m);
+  p.innerHTML = '<button type="button" data-k="h" title="\u0413\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0439">\u0413</button><button type="button" data-k="v" title="\u0412\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u044B\u0439">\u0412</button><button type="button" data-k="a" title="\u0412\u0434\u043E\u043B\u044C \u043E\u0442\u0440\u0435\u0437\u043A\u0430">\u041D</button>' +
+    '<input type="text" placeholder="' + G.g.text.replace(/"/g, '') + '" value="' + (d.text || '').replace(/"/g, '&quot;') + '" title="\u0422\u0435\u043A\u0441\u0442 \u0440\u0430\u0437\u043C\u0435\u0440\u0430 (\u043F\u0443\u0441\u0442\u043E \u2014 \u0438\u0437\u043C\u0435\u0440\u0435\u043D\u043D\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435), \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 \u00D835">' +
+    '<button type="button" data-k="del" title="\u0423\u0434\u0430\u043B\u0438\u0442\u044C (Del)">\u2715</button>';
+  Array.prototype.forEach.call(p.querySelectorAll('button[data-k]'), function (b) { if (b.getAttribute('data-k') === d.k) b.classList.add('on'); });
+  p.classList.add('on');
+  p.style.left = Math.max(8, Math.min(window.innerWidth - 290, c.x + 22)) + 'px';
+  p.style.top = Math.max(60, Math.min(window.innerHeight - 50, c.y - 16)) + 'px';
+}
+function __dtApply(fn) {
+  var dt = __dtState(), d = dt.sel ? __dtFind(dt.sel) : null;
+  if (!d) return;
+  fn(d); __manSave(); __manUI();
+  var keep = dt.sel;
+  __shRender();
+  dt.sel = keep; __dtOverlay(); __dtEditShow();
+}
+function __dtSetKind(d, k) {
+  var G = __dtGeom(d); if (!G) return;
+  var mid = [(G.g.A2[0] + G.g.B2[0]) / 2, (G.g.A2[1] + G.g.B2[1]) / 2], info = G.info;
+  if (k === 'h' && Math.abs(d.b[0] - d.a[0]) < 0.05) return;
+  if (k === 'v' && Math.abs(d.b[1] - d.a[1]) < 0.05) return;
+  d.k = k;
+  __dtPlace(info, d, { x: mid[0], y: mid[1] }, true, __dtDims(d.view, d.id));
+}
+/* ---- события ---- */
+function __dtMove(ev) {
+  var dt = __dtState();
+  if (!dt.on) return;
+  var P = __dtPoint(ev);
+  if (!P) return;
+  var view = __dtViewAt(P.sheet, P.x, P.y);
+  dt.alt = ev.altKey; dt.k = P.k;
+  if (dt.drag) {
+    var info = _e.shRes.viewInfo[dt.view], d0 = __dtFind(dt.drag.id);
+    if (!info || !d0) return;
+    if (Math.hypot(ev.clientX - dt.drag.cx, ev.clientY - dt.drag.cy) > 4) dt.drag.moved = true;
+    if (dt.drag.moved) { var t = JSON.parse(JSON.stringify(d0)); __dtPlace(info, t, { x: P.x, y: P.y }, ev.altKey, __dtDims(t.view, t.id)); dt.dragTmp = t; __dtOverlay(); __dtEditShow(); }
+    return;
+  }
+  if (dt.stage === 0 || view !== dt.view) {
+    if (dt.stage === 0) dt.view = view;
+  }
+  if (!dt.view) { dt.hover = null; __dtOverlay(); return; }
+  var inf = _e.shRes.viewInfo[dt.view];
+  if (view !== dt.view) { dt.hover = null; __dtOverlay(); return; }
+  dt.cur = { x: P.x, y: P.y };
+  if (dt.stage < 2) {
+    dt.hover = __dtSnap(dt.view, P.x, P.y, 11 / P.k, P.k, dt.stage === 1 ? dt.p1 : null);
+  }
+  if (dt.stage === 0 || dt.stage === 1) dt.cursorMode = 'snap';
+  if (!dt.raf) dt.raf = requestAnimationFrame(function () { dt.raf = 0; __dtOverlay(); });
+}
+function __dtDown(ev) {
+  var dt = __dtState();
+  if (!dt.on || ev.button !== 0 || dt.stage !== 0 || __zmState().pan || __zmState().space) return;
+  var P = __dtPoint(ev);
+  if (!P) return;
+  var view = __dtViewAt(P.sheet, P.x, P.y);
+  if (!view) return;
+  var hit = __dtHit(view, P.x, P.y, 2.2 + 2 / P.k);
+  if (hit) {
+    dt.sel = hit.id; dt.view = view; dt.drag = { id: hit.id, cx: ev.clientX, cy: ev.clientY, moved: false }; dt.eat = true;
+    __dtHint(); __dtOverlay(); __dtEditShow();
+  }
+}
+function __dtUp(ev) {
+  var dt = __dtState();
+  if (!dt.on || !dt.drag) return;
+  var dr = dt.drag; dt.drag = null;
+  setTimeout(function () { dt.eat = false; }, 60);   // клик после перетаскивания не приходит — флаг не должен залипнуть
+  if (dr.moved && dt.dragTmp) {
+    var d = __dtFind(dr.id), t = dt.dragTmp; dt.dragTmp = null;
+    if (d) { d.pos = t.pos; d.edge = t.edge; d.lane = t.lane; if (t.pos === undefined) delete d.pos; if (t.edge === undefined) { delete d.edge; delete d.lane; } __manSave(); __shRender(); }
+    dt.sel = dr.id; __dtOverlay(); __dtEditShow();
+  }
+}
+function __dtClick(ev) {
+  var dt = __dtState();
+  if (!dt.on) return;
+  if (__zmState().eat || __zmState().space) { ev.preventDefault(); return; }
+  if (dt.eat) { dt.eat = false; ev.preventDefault(); return; }
+  var P = __dtPoint(ev);
+  if (!P) return;
+  var view = __dtViewAt(P.sheet, P.x, P.y);
+  if (!view) { if (dt.stage === 0 && dt.sel) { dt.sel = null; __dtHint(); __dtOverlay(); __dtEditShow(); } return; }
+  dt.alt = ev.altKey;
+  if (dt.stage === 0) {
+    if (dt.sel) { dt.sel = null; __dtEditShow(); }
+    var sn = __dtSnap(view, P.x, P.y, 11 / P.k, P.k, null);
+    if (!sn) { __dtHint(); __dtOverlay(); return; }
+    dt.view = view; dt.p1 = sn; dt.stage = 1; dt.forced = null;
+  } else if (dt.stage === 1) {
+    if (view !== dt.view) return;
+    var s2 = __dtSnap(view, P.x, P.y, 11 / P.k, P.k, dt.p1);
+    if (!s2 || Math.hypot(s2.uw[0] - dt.p1.uw[0], s2.uw[1] - dt.p1.uw[1]) < 0.05) return;
+    dt.p2 = s2; dt.stage = 2; dt.cur = { x: P.x, y: P.y };
+  } else if (dt.stage === 2) {
+    if (view !== dt.view) return;
+    dt.cur = { x: P.x, y: P.y };
+    var nd = __dtDraft();
+    if (!nd) return;
+    nd.id = 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+    __manGet().push(nd); __manSave(); __manUI();
+    dt.stage = 0; dt.p1 = dt.p2 = null; dt.forced = null; dt.hover = null;
+    __shRender(); dt.sel = nd.id; __dtOverlay(); __dtEditShow();
+  }
+  __dtHint(); __dtOverlay();
+}
+function __dtKey(ev) {
+  var dt = __dtState(), sh = document.getElementById('sheet');
+  if (!sh || !sh.classList.contains('on')) return;
+  var tag = ev.target && ev.target.tagName, typing = tag === 'INPUT' || tag === 'TEXTAREA';
+  if (ev.key === 'Escape') {
+    if (typing && ev.target.closest && ev.target.closest('#dt-edit')) { ev.target.blur(); ev.stopPropagation(); ev.preventDefault(); return; }
+    if (dt.on && dt.stage > 0) { dt.stage = 0; dt.p1 = dt.p2 = null; dt.forced = null; dt.hover = null; }
+    else if (dt.on && dt.sel) { dt.sel = null; }
+    else if (dt.on) { __dtSet(false); ev.stopPropagation(); ev.preventDefault(); return; }
+    else return;
+    __dtHint(); __dtOverlay(); __dtEditShow(); ev.stopPropagation(); ev.preventDefault();
+    return;
+  }
+  if (!dt.on || typing || ev.ctrlKey || ev.metaKey) return;
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && dt.sel) {
+    var id = dt.sel, arr = __manGet(), ix = arr.map(function (d) { return d.id; }).indexOf(id);
+    if (ix >= 0) { arr.splice(ix, 1); dt.sel = null; __manSave(); __manUI(); __shRender(); __dtHint(); __dtOverlay(); __dtEditShow(); }
+    ev.stopPropagation(); ev.preventDefault();
+    return;
+  }
+  var key = (ev.key || '').toLowerCase(), code = ev.code, k = null;
+  if (key === '\u0433' || key === 'h' || code === 'KeyU') k = 'h';
+  else if (key === '\u0432' || key === 'v' || code === 'KeyD') k = 'v';
+  else if (key === '\u043D' || key === 'a' || code === 'KeyY') k = 'a';
+  if (!k) return;
+  if (dt.sel) __dtApply(function (d) { __dtSetKind(d, k); });
+  else if (dt.stage >= 1) { dt.forced = dt.forced === k ? null : k; __dtHint(); __dtOverlay(); }
+  else return;
+  ev.stopPropagation(); ev.preventDefault();
+}
+function __dtAfterRender() {
+  var dt = __dtState();
+  if (dt.sel && !__dtFind(dt.sel)) dt.sel = null;
+  __dtOverlay(); __dtEditShow(); __dtHint();
+}
+/* ---- скрытие автоматических размеров по видам ---- */
+function __autoGet() { try { return JSON.parse(__shStore('hideauto') || '{}') || {}; } catch (e) { return {}; } }
+function __autoPop() {
+  var pop = document.getElementById('sh-auto-pop'), cur = __autoGet(), html = '<div class="pt">\u0421\u043A\u0440\u044B\u0442\u044C \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0440\u0430\u0437\u043C\u0435\u0440\u044B \u043D\u0430 \u0432\u0438\u0434\u0430\u0445:</div>';
+  var boxes = document.querySelectorAll('.sh-v input'), i;
+  for (i = 0; i < boxes.length; i++) {
+    if (!boxes[i].checked) continue;
+    var id = boxes[i].getAttribute('data-v'), lab = boxes[i].parentNode.textContent.trim();
+    html += '<label><input type="checkbox" data-hv="' + id + '"' + (cur[id] ? ' checked' : '') + '>' + lab + '</label>';
+  }
+  pop.innerHTML = html;
+  Array.prototype.forEach.call(pop.querySelectorAll('input[data-hv]'), function (cb) {
+    cb.addEventListener('change', function () {
+      var c = __autoGet();
+      if (cb.checked) c[cb.getAttribute('data-hv')] = true; else delete c[cb.getAttribute('data-hv')];
+      __shStore('hideauto', JSON.stringify(c));
+      __autoSync(); __shRender();
+    });
+  });
+}
+function __autoSync() {
+  var b = document.getElementById('sh-auto-btn'), n = Object.keys(__autoGet()).length;
+  if (b) { b.classList.toggle('on', n > 0); b.textContent = n ? '\u0410\u0432\u0442\u043E: \u0441\u043A\u0440\u044B\u0442\u044B ' + n + ' \u25BE' : '\u0410\u0432\u0442\u043E \u25BE'; }
+}
+function __dtInit() {
+  var wrap = document.getElementById('sh-wrap');
+  document.getElementById('sh-dim-tool').addEventListener('click', function () { __dtSet(!__dtState().on); });
+  wrap.addEventListener('pointermove', __dtMove);
+  wrap.addEventListener('pointerdown', __dtDown);
+  window.addEventListener('pointerup', __dtUp);
+  wrap.addEventListener('click', __dtClick);
+  wrap.addEventListener('contextmenu', function (ev) {
+    var dt = __dtState();
+    if (dt.on && (dt.stage > 0 || dt.sel)) { ev.preventDefault(); dt.stage = 0; dt.p1 = dt.p2 = null; dt.forced = null; dt.sel = null; __dtHint(); __dtOverlay(); __dtEditShow(); }
+  });
+  window.addEventListener('keydown', __dtKey, true);
+  var pop = document.getElementById('sh-auto-pop'), btn = document.getElementById('sh-auto-btn');
+  btn.addEventListener('click', function (ev) { ev.stopPropagation(); if (pop.style.display === 'none') { __autoPop(); pop.style.display = ''; } else pop.style.display = 'none'; });
+  document.addEventListener('click', function (ev) { if (pop.style.display !== 'none' && !pop.contains(ev.target) && ev.target !== btn) pop.style.display = 'none'; });
+  document.getElementById('dt-edit').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('button[data-k]') : null;
+    if (!b) return;
+    var k = b.getAttribute('data-k');
+    if (k === 'del') { var dt = __dtState(), arr = __manGet(), ix = arr.map(function (d) { return d.id; }).indexOf(dt.sel); if (ix >= 0) { arr.splice(ix, 1); dt.sel = null; __manSave(); __manUI(); __shRender(); __dtHint(); __dtOverlay(); __dtEditShow(); } }
+    else __dtApply(function (d) { __dtSetKind(d, k); });
+  });
+  document.getElementById('dt-edit').addEventListener('change', function (ev) {
+    if (ev.target && ev.target.tagName === 'INPUT') { var v = ev.target.value.trim(); __dtApply(function (d) { d.text = v; }); }
+  });
+  document.getElementById('dt-edit').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') ev.target.blur(); });
+  __autoSync();
+}
+
+/* ============ масштаб листа колесом, сдвиг, скрытие верхней панели ============
+   Масштаб меняет ширину бумаги (SVG остаётся векторным), точка под курсором при этом не уезжает.
+   Колесо масштабирует при включённом инструменте «Размер» или с зажатым Ctrl; Shift+колесо — по горизонтали, Alt+колесо — по вертикали;
+   сдвиг: средняя кнопка мыши или Пробел + левая кнопка. «0» — вписать. */
+function __zmState() { if (!_e.zm) _e.zm = { z: 1, pan: null, space: false, eat: false }; return _e.zm; }
+function __zmBase() { var w = document.getElementById('sh-wrap'); return Math.max(200, Math.min(w.clientWidth - 28, 1500)); }
+function __zmApply() {
+  var Z = __zmState(), ps = document.querySelectorAll('#sh-wrap .paper'), i, bw = __zmBase() * Z.z;
+  for (i = 0; i < ps.length; i++) {
+    if (Math.abs(Z.z - 1) < 1e-4) { ps[i].style.width = ''; ps[i].style.maxWidth = ''; }
+    else { ps[i].style.width = bw.toFixed(1) + 'px'; ps[i].style.maxWidth = 'none'; }
+  }
+  var v = document.getElementById('sh-zm-val');
+  if (v) v.textContent = Math.round(Z.z * 100) + '%';
+}
+function __zmRefresh() {
+  var dt = __dtState();
+  if (!__zmRefresh.raf) __zmRefresh.raf = requestAnimationFrame(function () { __zmRefresh.raf = 0; __dtOverlay(); __dtEditShow(); });
+}
+/* масштаб в f раз вокруг точки экрана (cx, cy): точка бумаги под ней остаётся на месте */
+function __zmAt(cx, cy, f, target) {
+  var Z = __zmState(), w = document.getElementById('sh-wrap');
+  var pa = target && target.closest ? target.closest('.paper') : null;
+  if (!pa) { var all = w.querySelectorAll('.paper'), i; for (i = 0; i < all.length && !pa; i++) { var rr = all[i].getBoundingClientRect(); if (cy >= rr.top && cy <= rr.bottom) pa = all[i]; } if (!pa) pa = all[0]; }
+  if (!pa) return;
+  var r0 = pa.getBoundingClientRect(), fx = (cx - r0.left) / r0.width, fy = (cy - r0.top) / r0.height;
+  var nz = Math.max(0.4, Math.min(16, Z.z * f));
+  if (Math.abs(nz - Z.z) < 1e-4) return;
+  Z.z = nz; __zmApply();
+  var r1 = pa.getBoundingClientRect();
+  w.scrollLeft += (r1.left + fx * r1.width) - cx;
+  w.scrollTop += (r1.top + fy * r1.height) - cy;
+  __zmRefresh();
+}
+function __zmFit() { var Z = __zmState(), w = document.getElementById('sh-wrap'); Z.z = 1; __zmApply(); w.scrollLeft = 0; w.scrollTop = 0; __zmRefresh(); }
+function __zmCenter(f) { var r = document.getElementById('sh-wrap').getBoundingClientRect(); __zmAt(r.left + r.width / 2, r.top + r.height / 2, f, null); }
+function __barSet(hide) {
+  var sh = document.getElementById('sheet'), b = document.getElementById('sh-mini-bar');
+  sh.classList.toggle('nobar', !!hide);
+  if (b) b.classList.toggle('on', !!hide);
+  __shStore('nobar', hide ? '1' : '0');
+  __zmApply(); __zmRefresh();
+}
+function __zmInit() {
+  var w = document.getElementById('sh-wrap'), Z = __zmState();
+  w.addEventListener('wheel', function (ev) {
+    var dt = __dtState();
+    var zoom = ev.ctrlKey || ev.metaKey || dt.on;
+    if (!zoom) return;
+    ev.preventDefault();
+    var dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? 400 : 1);
+    if (ev.shiftKey && dt.on) { w.scrollLeft += dy; __zmRefresh(); return; }
+    if (ev.altKey && dt.on) { w.scrollTop += dy; __zmRefresh(); return; }
+    __zmAt(ev.clientX, ev.clientY, Math.exp(-dy * 0.0016), ev.target);
+  }, { passive: false });
+  w.addEventListener('scroll', __zmRefresh);
+  // сдвиг: средняя кнопка или Пробел + левая
+  w.addEventListener('pointerdown', function (ev) {
+    if (ev.button === 1 || (ev.button === 0 && Z.space)) {
+      Z.pan = { x: ev.clientX, y: ev.clientY, sl: w.scrollLeft, st: w.scrollTop, moved: false };
+      w.classList.add('panning');
+      ev.preventDefault(); ev.stopPropagation();
+    }
+  }, true);
+  window.addEventListener('pointermove', function (ev) {
+    if (!Z.pan) return;
+    if (Math.hypot(ev.clientX - Z.pan.x, ev.clientY - Z.pan.y) > 2) Z.pan.moved = true;
+    w.scrollLeft = Z.pan.sl - (ev.clientX - Z.pan.x); w.scrollTop = Z.pan.st - (ev.clientY - Z.pan.y);
+  });
+  window.addEventListener('pointerup', function () {
+    if (!Z.pan) return;
+    Z.pan = null; w.classList.remove('panning'); Z.eat = true;
+    setTimeout(function () { Z.eat = false; }, 60);
+  });
+  window.addEventListener('keydown', function (ev) {
+    var sh = document.getElementById('sheet');
+    if (!sh || !sh.classList.contains('on')) return;
+    var tag = ev.target && ev.target.tagName, typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (typing || ev.ctrlKey || ev.metaKey) return;
+    if (ev.key === 'Tab') { ev.preventDefault(); __barSet(!sh.classList.contains('nobar')); }
+    else if (ev.key === ' ' || ev.code === 'Space') { if (!Z.space) { Z.space = true; w.classList.add('spacepan'); } ev.preventDefault(); }
+    else if (ev.key === '0') { ev.preventDefault(); __zmFit(); }
+  }, true);
+  window.addEventListener('keyup', function (ev) { if (ev.key === ' ' || ev.code === 'Space') { Z.space = false; w.classList.remove('spacepan'); } });
+  window.addEventListener('blur', function () { Z.space = false; w.classList.remove('spacepan'); });
+  window.addEventListener('resize', function () { if (document.getElementById('sheet').classList.contains('on')) { __zmApply(); __zmRefresh(); } });
+  document.getElementById('sh-zm-in').addEventListener('click', function () { __zmCenter(1.25); });
+  document.getElementById('sh-zm-out').addEventListener('click', function () { __zmCenter(0.8); });
+  document.getElementById('sh-zm-fit').addEventListener('click', __zmFit);
+  document.getElementById('sh-mini-bar').addEventListener('click', function () { __barSet(!document.getElementById('sheet').classList.contains('nobar')); });
+  document.getElementById('sh-mini-tool').addEventListener('click', function () { __dtSet(!__dtState().on); });
+  document.getElementById('sh-mini-close').addEventListener('click', __sheetClose);
 }
 function __shSoon() {
   clearTimeout(_e.shTimer);
@@ -6509,11 +7462,15 @@ function __sheetOpen() {
   document.getElementById('sh-rdim').checked = __shStore('rdim') !== '0';
   document.getElementById('sh-lvl').checked = __shStore('lvl') === '1';
   document.getElementById('sh-cont').checked = __shStore('cont') !== '0';
+  _e.dt = null;
+  (function (z) { z.z = 1; z.pan = null; z.space = false; z.eat = false; })(__zmState());
+  document.getElementById('sheet').classList.toggle('nobar', __shStore('nobar') === '1');
+  { var mb = document.getElementById('sh-mini-bar'); if (mb) mb.classList.toggle('on', __shStore('nobar') === '1'); }
   __manUI();
   document.getElementById('sheet').classList.add('on');
   __shRender();
 }
-function __sheetClose() { document.getElementById('sheet').classList.remove('on'); }
+function __sheetClose() { if (typeof __dtSet === 'function') __dtSet(false); document.getElementById('sheet').classList.remove('on'); }
 function __sheetInit() {
   var ids = ['sh-cust', 'sh-title', 'sh-doc', 'sh-words'], i;
   for (i = 0; i < ids.length; i++) document.getElementById(ids[i]).addEventListener('input', __shSoon);
@@ -6558,6 +7515,8 @@ function __sheetInit() {
     __shStore('lvl', document.getElementById('sh-lvl').checked ? '1' : '0');
     __shRender();
   });
+  __dtInit();
+  __zmInit();
   document.getElementById('sh-vis').addEventListener('change', function () {
     __shStore('vis', document.getElementById('sh-vis').checked ? '1' : '0');
     _e.shParts = __shInput();
@@ -6568,7 +7527,7 @@ function __sheetInit() {
     __shRender();
   });
   document.getElementById('sh-man-undo').addEventListener('click', function () { __manGet().pop(); __manSave(); __manUI(); __shRender(); });
-  document.getElementById('sh-man-flip').addEventListener('click', function () { var a = __manGet(); if (a.length) { a[a.length - 1].flip = a[a.length - 1].flip ? 0 : 1; __manSave(); __shRender(); } });
+  document.getElementById('sh-man-flip').addEventListener('click', function () { var a = __manGet(); if (a.length) { __dtFlip(a[a.length - 1]); __manSave(); __shRender(); } });
   document.getElementById('sh-man-clear').addEventListener('click', function () { _e.manDims = []; __manSave(); __manUI(); __shRender(); });
   var angBtns = document.querySelectorAll('.sh-ang'), abi;
   for (abi = 0; abi < angBtns.length; abi++) {
@@ -6649,7 +7608,7 @@ function __svdInit() {
   });
 }
 __svdInit();
-var __VER="1.53",__VDATE="05.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
+var __VER="1.55",__VDATE="08.10.2026";__sheetInit();(()=>{let v=document.getElementById("ver");if(!v)return;v.textContent="v"+__VER+" \xB7 "+__VDATE;v.addEventListener("click",()=>{try{let u=new URL(location.href);u.searchParams.set("v",Date.now());location.href=u.toString()}catch(e){location.reload()}})})();document.getElementById("btn-env").addEventListener("click",()=>{_e.hideEnv=!_e.hideEnv,__vis()});document.getElementById("btn-dims").addEventListener("click",__dimsToggle);document.getElementById("btn-link").addEventListener("click",__linkOpen);__linkInit();gu();ti(null);__fromURL();_e.srcM&&!_e.client&&(document.getElementById("btn-link").style.display="inline-block");})();
 /*! Bundled license information:
 
 three/build/three.module.js:
